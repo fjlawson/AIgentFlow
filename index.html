@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>AIGentFlow - Login</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="./assets/styles/main.css">
+    </head>
+
+    <body class="page-login">
+        <main class="auth">
+
+            <!-- Website info -->
+            <section class="info">
+                <div class="info__logo">AIGentFlow</div>
+
+                <h1 class="info__title">Trade through PolyMarket with your AI Agent Team</h1>
+
+                <ul class="features">
+                    <li>Pick a team from the marketplace -- no setup or configuration needed</li>
+                    <li>Powered by OpenRouter -- your own key runs every agent</li>
+                    <li>Watch your team think in real time through a live feed</li>
+                    <li>Get a text the moment your agents trade via Telegram</li>
+                </ul>
+
+                <p class="info__disclaimer">
+                    Not financial advice. You fund and control your PolyMarket account -- AIGentFlow never holds your funds.
+                </p>
+            </section>
+
+            <!-- Login form -->
+            <section class="login">
+                <form id="login-form" class="login__form" novalidate>
+                    <div class="field">
+                        <label for="identifier">Email or Username:</label>
+                        <input class="input" type="text" id="identifier" name="identifier" autocomplete="username" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="password">Password:</label>
+                        <input class="input" type="password" id="password" name="password" autocomplete="current-password" required>
+                    </div>
+
+                    <!-- added a placeholder # link for resetting password -->
+                    <a class="login__forgot" href="#">Forgot password?</a>
+
+                    <p id="form-error" class="login__error" role="alert" hidden></p>
+
+                    <button type="submit" class="btn btn--lg">Login</button>
+
+                    <!-- also added a placeholder # link for registering an account -->
+                    <p class="login__register">
+                        Don't have an account? <a href="#">Register</a>
+                    </p>
+                </form>
+            </section>
+
+        </main>
+    </body>
+</html>
