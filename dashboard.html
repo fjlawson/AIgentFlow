@@ -13,7 +13,7 @@
     <body class="page-dashboard">
 
         <nav class="navbar" aria-label="Main">
-            <a class="navbar__logo" href="dashboard.html">AIGentFlow</a>
+            <a class="navbar__logo">AIGentFlow</a>
 
             <ul class="navbar__links">
                 <li><a class="navbar__link" href="dashboard.html" aria-current="page">Dashboard</a></li>
@@ -27,5 +27,71 @@
             </div>
         </nav>
 
+        <main class="container">
+            <h1 class="page-title">Dashboard</h1>
+        
+            <!-- summary stats; these contain placeholder values to be filled in once the user gets a team / starts to trade -->
+            <section class="stats" aria-label="Summary">
+                <div class="card stat">
+                    <span class="stat__label">Portfolio Value</span>
+                    <span class="stat__value" data-stat="portfolioValue">--</span>
+                </div>
+                <div class="card stat">
+                    <span class="stat__label">Today's Value</span>
+                    <span class="stat__value" data-stat="todayValue">--</span>
+                </div>
+                <div class="card stat">
+                    <span class="stat__label">Teams Owned</span>
+                    <span class="stat__value">
+                    <span data-stat="teamsOwned">--</span>
+                    <span class="stat__unit">of <span data-stat="teamsActive">--</span> active</span>
+                    </span>
+                </div>
+                <div class="card stat">
+                    <span class="stat__label">Trades Today</span>
+                    <span class="stat__value" data-stat="tradesToday">--</span>
+                </div>
+            </section>
+        
+            <div class="dashboard-grid">
+        
+                <!-- team information -->
+                <section aria-labelledby="teams-heading">
+                    <h2 class="section-title" id="teams-heading">Your Teams</h2>
+                    <div id="team-list"></div>
+                    <p class="empty" id="teams-empty">
+                        You don't own any teams yet. <a class="link" href="marketplace.html">Browse the marketplace</a> to get started.
+                    </p>
+                </section>
+            
+                <!-- live feed + recent activity -->
+                <div>
+                    <section class="card" id="live-feed" aria-labelledby="feed-heading">
+                        <h2 class="card__title" id="feed-heading">Live Feed</h2>
+                        <ul class="feed" id="feed-list"></ul>
+
+                        <p class="empty" id="feed-empty"></p>
+                        
+                        <div class="card__footer" id="feed-footer" hidden><a class="link" href="#">Expand</a></div>
+                    </section>
+            
+                    <section class="card" style="margin-top:1.5rem" aria-labelledby="activity-heading">
+                        <h2 class="card__title" id="activity-heading">Recent Activity</h2>
+                        <table class="table">
+                            <thead>
+                            <tr><th>Market</th><th>Side</th><th>Size</th><th>Result</th></tr>
+                            </thead>
+                            <tbody id="activity-body"></tbody>
+                        </table>
+                        <p class="empty" id="activity-empty">No trades yet.</p>
+
+                        <!-- option to see earlier activity; this'll only start showing up after a sufficient amount of trades have been made -->
+                        <div class="card__footer" id="activity-footer" hidden><a class="link" href="#">View earlier activity</a></div>
+                    </section>
+                </div>
+            </div>
+        </main>
+
     </body>
+
 </html>

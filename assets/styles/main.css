@@ -26,7 +26,7 @@ AIGentFlow CSS
   
   --positive: #0a8a4b;
   --pending: #8a9a00;
-  --error: #b3261e;
+  --negative: #b3261e;
 
   --font: "Barlow Semi Condensed", sans-serif;
 }
@@ -189,9 +189,47 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 }
 
 .page-login .login__forgot:hover { color: var(--green-primary); }
-.page-login .login__error { margin: 1rem 0 0; text-align: center; font-size: 1.1rem; color: var(--error); }
+.page-login .login__error { margin: 1rem 0 0; text-align: center; font-size: 1.1rem; color: var(--negative); }
 .page-login .btn--lg { align-self: center; margin-top: 3rem; background: var(--green-primary); }
 .page-login .btn--lg:hover { background: #02301d; }
 .page-login .login__register { margin: 5rem 0 0; text-align: center; font-size: 1.5rem; }
 .page-login .login__register a { margin-left: .5rem; font-weight: 600; color: var(--green-primary); }
 .page-login .login__register a:hover { color: var(--green-tertiary); }
+
+
+/* ** dashboard components ** */
+
+/* stat summary components */
+.page-dashboard .stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem; margin-bottom: 2.5rem;
+}
+
+.page-dashboard .stat { display: flex; flex-direction: column; padding: .5rem 1rem; }
+.page-dashboard .stat__label { font-size: 1.25rem; }
+.page-dashboard .stat__value { align-self: flex-end; font-size: 2.5rem; font-weight: 500; line-height: 1; }
+.page-dashboard .stat__value--positive { color: var(--positive); }
+.page-dashboard .stat_value--negative { color: var(--negative); }
+.page-dashboard .stat__unit { font-size: 1.5rem; color: var(--text-muted-dark); }
+
+
+/* remaining dashboard layout setup */
+.page-dashboard .dashboard-grid {
+  display: grid; grid-template-columns: 1fr 1.25fr;
+  gap: 2.5rem; align-items: start;
+}
+
+.page-dashboard .card__title { font-weight: 500 }
+
+/* feed components */
+.page-dashboard .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem; font-size: 1.25rem; }
+.page-dashboard .feed__item { display: grid; grid-template-columns: 3.5rem .75rem 1fr; gap: .75rem; align-items: start; }
+.page-dashboard .feed__dot { width: .75rem; height: .75rem; margin-top: .5rem; background: var(--dot, var(--text-muted-dark)); }
+ 
+/* activity table components */
+.page-dashboard .table { width: 100%; border-collapse: collapse; font-size: 1.25rem; }
+.page-dashboard .table th { padding: .2rem .5rem; text-align: left; font-weight: 400; color: var(--text-muted-dark); }
+.page-dashboard .table td { padding: .2rem .5rem; }
+.page-dashboard .result--pending { color: var(--pending); }
+.page-dashboard .result--won { color: var(--positive); }
+.page-dashboard .result--lost { color: var(--negative); }
