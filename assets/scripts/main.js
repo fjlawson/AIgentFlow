@@ -80,3 +80,43 @@ if (navUsername) {
   }
   navUsername.textContent = localStorage.getItem("username") || "username";
 }
+
+
+ // Gettting the teams from the backend
+async function loadTeams() {
+  const teamList = document.getElementById("team-list");
+  if (!teamList) return;
+
+  const token = localStorage.getItem("token");
+
+  try {
+    const response = await fetch(API_URL + "/teams", {
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error("Could not get teams");
+    }
+
+    const teams = await response.json();
+    teamList.innerHTML = "";
+
+    // Showing the teams on the dashboard
+    teams.forEach(function(team) {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.textContent = team.name || "Unnamed team";
+      teamList.appendChild(div);
+    });
+
+    document.getElementById("teams-empty").hidden = teams.length > 0;
+
+  } catch (error) {
+    teamList.textContent = "Error loading teams";
+    console.log(error);
+  }
+}
+
+loadTeams();
