@@ -82,41 +82,50 @@ if (navUsername) {
 }
 
 
- // Gettting the teams from the backend
+ // getting teams from backend
 async function loadTeams() {
   const teamList = document.getElementById("team-list");
-  if (!teamList) return;
+
+  if (!teamList) {
+    return;
+  }
 
   const token = localStorage.getItem("token");
 
   try {
     const response = await fetch(API_URL + "/teams", {
       headers: {
-        Authorization: "Bearer " + token
+        "Authorization": "Bearer " + token
       }
     });
 
-    if (!response.ok) {
-      throw new Error("Could not get teams");
+    if (response.ok == false) {
+      throw new Error("Failed to load teams");
     }
 
     const teams = await response.json();
-    teamList.innerHTML = "";
 
-    // Showing the teams on the dashboard
-    teams.forEach(function(team) {
-      const div = document.createElement("div");
-      div.className = "card";
-      div.textContent = team.name || "Unnamed team";
-      teamList.appendChild(div);
-    });
+    teamList.replaceChildren();
 
-    document.getElementById("teams-empty").hidden = teams.length > 0;
+    // display the teams
+    for (let i = 0; i < teams.length; i++) {
+      const team = document.createElement("div");
+      team.className = "card";
+      team.textContent = teams[i].name || "Unnamed team";
+
+      teamList.appendChild(team);
+    }
+
+    const empty = document.getElementById("teams-empty");
+    if (empty) {
+      empty.hidden = teams.length > 0;
+    }
 
   } catch (error) {
-    teamList.textContent = "Error loading teams";
+    teamList.textContent = "Could not load teams";
     console.log(error);
   }
 }
 
 loadTeams();
+
