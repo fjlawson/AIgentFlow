@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>AIGentFlow - Register</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="./assets/styles/main.css">
+    </head>
+
+    <body class="page-login">
+        <main class="auth">
+
+            <!-- Website info -->
+            <section class="info">
+                <div class="info__logo">AIGentFlow</div>
+
+                <h1 class="info__title">Trade through PolyMarket with your AI Agent Team</h1>
+
+                <ul class="features">
+                    <li>Pick a team from the marketplace -- no setup or configuration needed</li>
+                    <li>Powered by OpenRouter -- your own key runs every agent</li>
+                    <li>Watch your team think in real time through a live feed</li>
+                    <li>Get a text the moment your agents trade via Telegram</li>
+                </ul>
+
+                <p class="info__disclaimer">
+                    Not financial advice. You fund and control your PolyMarket account -- AIGentFlow never holds your funds.
+                </p>
+            </section>
+
+            <!-- Register form -->
+            <section class="login">
+                <form id="register-form" class="login__form" novalidate>
+                    <div class="field">
+                        <label for="username">Username:</label>
+                        <input class="input" type="text" id="username" name="username" autocomplete="username" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="email">Email:</label>
+                        <input class="input" type="email" id="email" name="email" autocomplete="email" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="password">Password:</label>
+                        <input class="input" type="password" id="password" name="password" autocomplete="new-password" minlength="6" required>
+                    </div>
+
+                    <p id="form-error" class="login__error" role="alert" hidden></p>
+
+                    <button type="submit" class="btn btn--lg">Register</button>
+
+                    <p class="login__register">
+                        Already have an account? <a href="index.html">Login</a>
+                    </p>
+                </form>
+            </section>
+
+        </main>
+
+        <script src="./assets/scripts/main.js"></script>
+    </body>
+</html>
