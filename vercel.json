@@ -1,0 +1,7 @@
+{
+  "buildCommand": "mkdir -p public && cp -r *.html assets public/",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" }
+  ]
+}
