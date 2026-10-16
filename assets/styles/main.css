@@ -5,6 +5,7 @@ AIGentFlow CSS
   - common components
   - login components
   - dashboard components
+  - admin panel components
 */
 
 /* ** root components ** */
@@ -121,6 +122,28 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
   border-radius: 0;
 }
 
+/* bordered cards */
+.card { background: var(--surface); border: 1px solid var(--border-dark); padding: 1.25rem; }
+.card__title { margin: 0 0 .75rem; font-size: 1.75rem; font-weight: 500; }
+.card__subtitle { display: block; margin: 1.25rem 0 .5rem; font-size: 1.5rem; font-weight: 500; }
+
+/* toggle switches */
+.toggle { position: relative; display: inline-block; flex: none; width: 3.5rem; height: 1.75rem; }
+.toggle input { position: absolute; inset: 0; z-index: 1; margin: 0; opacity: 0; cursor: pointer; }
+.toggle__track { position: absolute; inset: 0; background: #9a9a9a; border-radius: 999px; transition: background .25s; }
+
+.toggle__track::after {
+  content: "";
+  position: absolute; top: 50%; left: .2rem;
+  width: 1.25rem; height: 1.25rem;
+  background: #fff; border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.toggle input:checked + .toggle__track { background: var(--green-secondary); }
+.toggle input:checked + .toggle__track::after { left: calc(100% - 1.5rem); }
+.toggle input:focus-visible + .toggle__track { outline: 1px solid var(--green-tertiary); outline-offset: 2px; }
+
 
 /* ** Homepage components ** */
 
@@ -233,3 +256,31 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 .page-dashboard .result--pending { color: var(--pending); }
 .page-dashboard .result--won { color: var(--positive); }
 .page-dashboard .result--lost { color: var(--negative); }
+
+
+/* ** admin panel components ** */
+
+.page-admin .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+.page-admin .card p { margin: 0 0 .75rem; font-size: 1.25rem; line-height: 1.5; }
+ 
+/* input textboxes + button rows */
+.page-admin .key-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 1rem; }
+.page-admin .hint { margin: .5rem 0 0 .75rem; }
+.page-admin .status { min-height: 1.5em; margin: .25rem 0 0 .75rem; font-size: 1.25rem; color: var(--positive); }
+.page-admin .status--error { color: var(--error); }
+.page-admin .divider { margin: 1rem .75rem; border: 0; border-top: 1px solid var(--border-dark); }
+ 
+/* telegram linking steps + notif toggle switches */
+.page-admin .steps { margin: 0 0 1rem; padding: 0; list-style: none; counter-reset: step; font-size: 1.25rem; line-height: 1.5; }
+.page-admin .steps li { counter-increment: step; }
+.page-admin .steps li::before { content: counter(step) ".) "; }
+.page-admin .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; font-size: 1.25rem; }
+ 
+/* disclaimer bar */
+.page-admin .disclaimer-bar {
+  display: grid; grid-template-columns: 15rem 1fr auto; align-items: center; gap: 2rem;
+  margin-top: 2.5rem; padding: 1rem 1.25rem;
+  border: 1px solid var(--border-dark);
+}
+.page-admin .disclaimer-bar__title { margin: 0; font-size: 1.5rem; font-weight: 500; }
+.page-admin .disclaimer-bar .disclaimer-bar__text { margin: 0; font-size: 1.25rem; color: var(--text-muted-dark); }

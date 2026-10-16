@@ -25,6 +25,106 @@
             </div>
         </nav>
 
+        <main class="container">
+            <h1 class="page-title">Admin Panel</h1>
+
+            <div class="admin-grid">
+
+                <!-- API keys section -->
+                <section class="card" aria-labelledby="api-heading">
+                    <h2 class="card__title" id="api-heading">API Keys</h2>
+                    <p>Your Agents trade with your own accounts. Keys are encrypted at rest and only decrypted in memory when a run needs them.</p>
+
+                    <!-- openrouter key section -->
+                    <label class="card__subtitle" for="openrouter-key">OpenRouter API key</label>
+                    <div class="key-row">
+                        <input class="input" id="openrouter-key" spellcheck="false">
+
+                        <!-- this saves the entered key and displays a status below the textbox after saving -->
+                        <button type="button" class="btn" data-target="openrouter-key" data-status="openrouter-status">Save</button>
+                    </div>
+
+                    <p class="hint">Used to run every agent across every team you own.</p>
+
+                    <!-- this displays confirmation that the API key was saved successfully, currently empty when the user loads the page -->
+                    <p class="status" id="openrouter-status" role="status"></p>
+
+                    <hr class="divider">
+
+                    <!-- polymarket api key section, just about the same layout as the openrouter key section -->
+                    <label class="card__subtitle" for="polymarket-key">Polymarket API key</label>
+
+                    <div class="key-row">
+                        <input class="input" id="polymarket-key" spellcheck="false">
+
+                        <button type="button" class="btn" data-target="polymarket-key" data-status="polymarket-status">Save</button>
+                    </div>
+
+                    <p class="hint">Scoped to trade on your behalf.</p>
+
+                    <p class="status" id="polymarket-status" role="status"></p>
+
+                </section>
+
+                <!-- telegram linking section -->
+                <section class="card" aria-labelledby="telegram-heading">
+                    <h2 class="card__title" id="telegram-heading">Telegram Notifications</h2>
+                    <p>Get a notification the moment your Agents trade, get blocked, or finish a run.</p>
+
+                    <ol class="steps">
+                        <!-- @AIGentFlow_Bot can just be a placeholder for the telegram username right now -->
+                        <li>Open Telegram and search for <strong>@AIGentFlow_Bot</strong></li>
+                        <li>Send <strong>/start</strong> and paste the code it gives you below</li>
+                        <li>Confirm the link below</li>
+                    </ol>
+
+                    <div class="key-row">
+                        <input class="input" type="text" id="link-code" aria-label="Telegram linking code" autocomplete="off" spellcheck="false">
+                        <button type="button" class="btn" id="link-btn">Link</button>
+                    </div>
+                    
+                    <!-- same logic as polymarket-status, displays a message that the account is linked with telegram -->
+                    <p class="status" id="link-status" role="status"></p>
+
+                    <h3 class="card__subtitle">Notify me for...</h3>
+                    <div class="toggle-row">
+                        <span>When a trade executes</span>
+                        <label class="toggle">
+                            <input type="checkbox">
+                            <span class="toggle__track"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row">
+                        <span>When a trade is blocked by compliance</span>
+                        <label class="toggle">
+                            <input type="checkbox">
+                            <span class="toggle__track"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="toggle-row">
+                        <span>A daily summary of your activity</span>
+                        <label class="toggle">
+                            <input type="checkbox">
+                            <span class="toggle__track"></span>
+                        </label>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- disclaimers section -->
+            <section class="disclaimer-bar" aria-labelledby="disclaimer-heading">
+                <h2 class="disclaimer-bar__title" id="disclaimer-heading">Disclaimers Accepted</h2>
+
+                <p class="disclaimer-bar__text">
+                    Not financial advice • No fund custody • Risk disclosure
+                </p>
+            </section>
+
+        </main>
+
         <script src="./assets/scripts/main.js"></script>
     </body>
 </html>
