@@ -26,6 +26,26 @@
             </div>
         </nav>
 
+        <main class="container">
+            <h1 class="page-title">Marketplace</h1>
+
+            <p class="checkout-status" id="checkout-status" hidden></p>
+
+            <!-- mock teams for testing checkout; the data-team ids have to match MOCK_TEAMS in backend/main.py -->
+            <section class="team-grid" aria-label="Teams for sale">
+                <div class="card team">
+                    <h2 class="card__title">Geopolitics Team</h2>
+                    <p class="team__price">$9.99</p>
+                    <button class="btn" type="button" data-team="mock-geopolitics">Buy</button>
+                </div>
+                <div class="card team">
+                    <h2 class="card__title">Sports Betting Team</h2>
+                    <p class="team__price">$14.99</p>
+                    <button class="btn" type="button" data-team="mock-sports-betting">Buy</button>
+                </div>
+            </section>
+        </main>
+
         <script src="./assets/scripts/main.js"></script>
     </body>
 </html>

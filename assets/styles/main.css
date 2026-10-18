@@ -6,6 +6,7 @@ AIGentFlow CSS
   - login components
   - dashboard components
   - admin panel components
+  - marketplace components
 */
 
 /* ** root components ** */
@@ -284,3 +285,13 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 }
 .page-admin .disclaimer-bar__title { margin: 0; font-size: 1.5rem; font-weight: 500; }
 .page-admin .disclaimer-bar .disclaimer-bar__text { margin: 0; font-size: 1.25rem; color: var(--text-muted-dark); }
+
+
+/* ** marketplace components ** */
+
+.page-marketplace .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: 1.5rem; }
+.page-marketplace .team { display: flex; flex-direction: column; }
+.page-marketplace .team__price { margin: 0 0 1.25rem; font-size: 1.5rem; color: var(--text-muted-dark); }
+.page-marketplace .team .btn { margin-top: auto; }
+.page-marketplace .checkout-status { margin: 0 0 1.5rem; font-size: 1.5rem; color: var(--positive); }
+.page-marketplace .checkout-status--error { color: var(--negative); }
