@@ -129,3 +129,52 @@ async function loadTeams() {
 
 loadTeams();
 
+
+// marketplace checkout
+const checkoutStatus = document.getElementById("checkout-status");
+
+function showCheckoutStatus(message, isError) {
+  checkoutStatus.textContent = message;
+  checkoutStatus.classList.toggle("checkout-status--error", isError);
+  checkoutStatus.hidden = false;
+}
+
+async function startCheckout(button) {
+  button.disabled = true;
+
+  try {
+    const response = await fetch(API_URL + "/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + localStorage.getItem("token")
+      },
+      body: JSON.stringify({ team_id: button.dataset.team })
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(typeof data.detail === "string" ? data.detail : "Couldn't start checkout. Please try again.");
+    }
+    // Stripe hosts the payment page, so card details never touch our site
+    location.href = data.url;
+  } catch (error) {
+    showCheckoutStatus(error instanceof TypeError ? "Can't reach the server right now." : error.message, true);
+    button.disabled = false;
+  }
+}
+
+if (checkoutStatus) {
+  document.querySelectorAll("[data-team]").forEach((button) => {
+    button.addEventListener("click", () => startCheckout(button));
+  });
+
+  // Stripe sends the user back with ?checkout=success or ?checkout=canceled
+  const result = new URLSearchParams(location.search).get("checkout");
+  if (result === "success") {
+    // the team gets added by the webhook, which can land a few seconds after this page loads
+    showCheckoutStatus("Thanks for your purchase! Your team will show up on your dashboard shortly.", false);
+  } else if (result === "canceled") {
+    showCheckoutStatus("Checkout canceled. You weren't charged.", true);
+  }
+}

@@ -1,6 +1,9 @@
-import httpx
+import os
 
-from fastapi import FastAPI, HTTPException, Depends
+import httpx
+import stripe
+
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from supabase import create_client
@@ -12,6 +15,15 @@ from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
 app = FastAPI(title="AIgentFlow API")
 security = HTTPBearer()
 
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+# stand-ins until the marketplace has real teams. prices are in cents, and they live
+# here instead of the page so a user can't edit the price in their browser
+MOCK_TEAMS = {
+    "mock-geopolitics": {"name": "Geopolitics Team", "price": 999},
+    "mock-sports-betting": {"name": "Sports Betting Team", "price": 1499},
+}
+
 
 class LoginRequest(BaseModel):
     email: str
@@ -22,6 +34,10 @@ class RegisterRequest(BaseModel):
     username: str
     email: str
     password: str
+
+
+class CheckoutRequest(BaseModel):
+    team_id: str
 
 
 @app.get("/")
@@ -120,3 +136,46 @@ def get_teams(
         )
 
     return response.json()
+
+
+@app.post("/checkout")
+def checkout(
+    details: CheckoutRequest,
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    team = MOCK_TEAMS.get(details.team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="That team doesn't exist")
+
+    # ask Supabase who the token belongs to instead of trusting a user id from the page
+    client = create_client(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+    try:
+        user = client.auth.get_user(credentials.credentials).user
+    except AuthApiError:
+        raise HTTPException(status_code=401, detail="Please log in again")
+
+    # send the user back to whichever site they came from (localhost, preview, or production)
+    site = request.headers.get("origin", "https://aigentflow.vercel.app")
+
+    # the webhook reads user_id and team_id from metadata to grant the team, so keep these names
+    metadata = {"user_id": user.id, "team_id": details.team_id}
+
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        line_items=[{
+            "price_data": {
+                "currency": "usd",
+                "product_data": {"name": team["name"]},
+                "unit_amount": team["price"]
+            },
+            "quantity": 1
+        }],
+        metadata=metadata,
+        # also copy it onto the payment so it shows up on the Payments page in the Stripe dashboard
+        payment_intent_data={"metadata": metadata},
+        success_url=f"{site}/marketplace.html?checkout=success",
+        cancel_url=f"{site}/marketplace.html?checkout=canceled"
+    )
+
+    return {"url": session.url}
