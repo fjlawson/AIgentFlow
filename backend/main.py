@@ -179,3 +179,42 @@ def checkout(
     )
 
     return {"url": session.url}
+
+
+# getting the payment info from stripe
+@app.post("/webhook")
+async def stripe_webhook(request: Request):
+    body = await request.body()
+    sig = request.headers.get("stripe-signature")
+    secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+    if not secret:
+        raise HTTPException(status_code=500, detail="Missing webhook secret")
+
+    try:
+        event = stripe.Webhook.construct_event(body, sig, secret)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Bad webhook data")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Bad signature")
+
+    if event["type"] == "checkout.session.completed" or event["type"] == "checkout.session.async_payment_succeeded":
+        session = event["data"]["object"]
+
+        if session.get("payment_status") != "paid":
+            return {"status": "pending"}
+
+        info = session.get("metadata") or {}
+        user_id = info.get("user_id")
+        team_id = info.get("team_id")
+
+        if not user_id or not team_id:
+            raise HTTPException(status_code=400, detail="Missing user or team")
+
+        # saves the purchase to supabase later
+        print("Purchase:", session["id"], user_id, team_id)
+
+        return {"status": "received"}
+
+    return {"status": "ignored"}
+
