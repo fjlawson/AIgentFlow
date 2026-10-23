@@ -47,6 +47,61 @@ def root():
         "supabase": "configured"
     }
 
+# Verifies current user for admin verification. Returns user info
+@app.get("/users/me")
+def get_current_user_info(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+
+    client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+
+    try:
+        auth_response = client.auth.get_user(token)
+        auth_user = auth_response.user
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    if not auth_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    # Query as the authenticated user so Supabase Row-Level Security
+    # policies apply to this user's request.
+    client.postgrest.auth(token)
+
+    profile_response = (
+        client.table("profiles")
+        .select("username, role")
+        .eq("id", auth_user.id)
+        .maybe_single()
+        .execute()
+    )
+
+    profile = profile_response.data
+
+    if not profile:
+        raise HTTPException(
+            status_code=404,
+            detail="User profile not found"
+        )
+
+    return {
+        "id": auth_user.id,
+        "username": (
+            profile.get("username")
+            or (auth_user.user_metadata or {}).get("username")
+        ),
+        "role": profile.get("role", "user")
+    }
 
 @app.post("/login")
 def login(credentials: LoginRequest):

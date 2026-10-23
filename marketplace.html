@@ -15,10 +15,11 @@
         <nav class="navbar" aria-label="Main">
             <a class="navbar__logo">AIGentFlow</a>
 
-            <ul class="navbar__links">
+            <ul class="navbar__links" hidden>
                 <li><a class="navbar__link" href="dashboard.html">Dashboard</a></li>
                 <li><a class="navbar__link" href="marketplace.html" aria-current="page">Marketplace</a></li>
-                <li><a class="navbar__link" href="admin.html">Admin</a></li>
+                <li><a class="navbar__link" href="settings.html">Settings</a></li>
+                <li id="admin-nav-item" hidden><a class="navbar__link" href="admin.html">Admin</a></li>
             </ul>
 
             <div class="navbar__user">
@@ -46,6 +47,6 @@
             </section>
         </main>
 
-        <script src="./assets/scripts/main.js"></script>
+        <script type="module" src="./assets/scripts/main.js"></script>
     </body>
 </html>
