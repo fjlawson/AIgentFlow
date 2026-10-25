@@ -74,16 +74,17 @@
 
                         <thead>
                             <tr>
-                                <th scope="col">User</th>
-                                <th scope="col">Status</th>
-                                <th scope="col">Account timeout</th>
+                                <th scope="col">Member</th>
+                                <th scope="col">Role</th>
+                                <th scope="col">Ban status</th>
+                                <th scope="col">Ban details</th>
                                 <th scope="col">Actions</th>
                             </tr>
                         </thead>
 
                         <tbody id="user-table-body">
                             <tr>
-                                <td colspan="4">Loading users…</td>
+                                <td colspan="5">Loading users…</td>
                             </tr>
                         </tbody>
                     </table>
@@ -97,6 +98,94 @@
         <div class="container" id="admin-loading" role="status">
             Checking administrator access…
         </div>
+        <dialog class="modal" id="ban-dialog">
+            <form class="modal__content" id="ban-form">
+                <header class="modal__header">
+                    <div>
+                        <h2 class="modal__title">Ban member</h2>
+                        <p id="ban-member-name"></p>
+                    </div>
+
+                    <button
+                        class="btn btn--secondary"
+                        id="close-ban-dialog"
+                        type="button"
+                        aria-label="Close ban dialog"
+                    >
+                        Close
+                    </button>
+                </header>
+
+                <input id="ban-user-id" name="user_id" type="hidden">
+
+                <fieldset class="form-group">
+                    <legend>Ban type</legend>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="ban_type"
+                            value="temporary"
+                            checked
+                        >
+                        Temporary
+                    </label>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="ban_type"
+                            value="permanent"
+                        >
+                        Permanent
+                    </label>
+                </fieldset>
+
+                <div class="form-group" id="ban-end-group">
+                    <label for="ban-end-time">Ban ends</label>
+                    <input
+                        class="input"
+                        id="ban-end-time"
+                        name="end_time"
+                        type="datetime-local"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="ban-reason">Reason</label>
+                    <textarea
+                        class="input"
+                        id="ban-reason"
+                        name="reason"
+                        rows="4"
+                        maxlength="500"
+                        required
+                    ></textarea>
+                </div>
+
+                <p
+                    class="status"
+                    id="ban-form-status"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+
+                <div class="modal__actions">
+                    <button
+                        class="btn btn--secondary"
+                        id="cancel-ban"
+                        type="button"
+                    >
+                        Cancel
+                    </button>
+
+                    <button class="btn btn--danger" type="submit">
+                        Confirm ban
+                    </button>
+                </div>
+            </form>
+        </dialog>
         <script type="module" src="./assets/scripts/main.js"></script>
     </body>
 </html>

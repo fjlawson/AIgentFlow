@@ -9,8 +9,12 @@ from pydantic import BaseModel
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
-from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
+from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY
+from datetime import datetime, timezone
 
+SUPABASE_SERVICE_ROLE_KEY = os.getenv(
+    "SUPABASE_SERVICE_ROLE_KEY"
+)
 
 app = FastAPI(title="AIgentFlow API")
 security = HTTPBearer()
@@ -106,6 +110,103 @@ def get_current_user_info(
 @app.post("/login")
 def login(credentials: LoginRequest):
     try:
+        auth_client = create_client(
+            SUPABASE_URL,
+            SUPABASE_PUBLISHABLE_KEY
+        )
+
+        auth_response = auth_client.auth.sign_in_with_password({
+            "email": credentials.email,
+            "password": credentials.password
+        })
+
+        user = auth_response.user
+        session = auth_response.session
+
+        if not user or not session:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password"
+            )
+
+        admin_client = create_client(
+            SUPABASE_URL,
+            SUPABASE_SERVICE_ROLE_KEY
+        )
+
+        now = datetime.now(timezone.utc).isoformat()
+
+        ban_response = (
+            admin_client.table("bans")
+            .select("id,reason,end_time")
+            .eq("user_id", user.id)
+            .eq("is_active", True)
+            .or_(f"end_time.is.null,end_time.gt.{now}")
+            .limit(1)
+            .execute()
+        )
+
+        active_bans = ban_response.data or []
+
+        if active_bans:
+            ban = active_bans[0]
+            end_time = ban.get("end_time")
+            reason = ban.get("reason") or "No reason provided"
+
+            if end_time:
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "Your account is temporarily banned until "
+                        f"{end_time}. Reason: {reason}"
+                    )
+                )
+
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Your account is permanently banned. "
+                    f"Reason: {reason}"
+                )
+            )
+
+        return {
+            "message": "Login successful",
+            "user_id": user.id,
+            "username": (
+                user.user_metadata or {}
+            ).get("username"),
+            "access_token": session.access_token
+        }
+
+    except HTTPException:
+        # Preserve the 403 ban response and other intentional errors.
+        raise
+
+    except AuthApiError as error:
+        if error.code == "email_not_confirmed":
+            raise HTTPException(
+                status_code=401,
+                detail="Please confirm your email before logging in"
+            )
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    except Exception as error:
+        print(
+            "Unexpected login error:",
+            type(error).__name__,
+            str(error)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to complete login right now"
+        )
+        '''
         client = create_client(
             SUPABASE_URL,
             SUPABASE_PUBLISHABLE_KEY
@@ -139,6 +240,7 @@ def login(credentials: LoginRequest):
             status_code=401,
             detail="Invalid email or password"
         )
+ '''       
 
 
 @app.post("/register")

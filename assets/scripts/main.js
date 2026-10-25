@@ -30,9 +30,16 @@ async function postForm(form, path) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    // FastAPI puts errors in "detail", but validation errors come back as a list
-    throw new Error(typeof data.detail === "string" ? data.detail : "Something went wrong. Please try again.");
+    const error = new Error(
+      typeof data.detail === "string"
+        ? data.detail
+        : "Something went wrong. Please try again."
+    );
+
+    error.status = response.status;
+    throw error;
   }
+
   return data;
 }
 

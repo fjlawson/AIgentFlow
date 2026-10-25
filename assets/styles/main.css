@@ -7,6 +7,7 @@ AIGentFlow CSS
   - dashboard components
   - settings panel components
   - marketplace components
+  - admin panel components
 */
 
 /* ** root components ** */
@@ -296,3 +297,55 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 .page-marketplace .team .btn { margin-top: auto; }
 .page-marketplace .checkout-status { margin: 0 0 1.5rem; font-size: 1.5rem; color: var(--positive); }
 .page-marketplace .checkout-status--error { color: var(--negative); }
+
+/* ** admin panel components ** */
+.modal {
+    width: min(36rem, calc(100% - 2rem));
+    padding: 0;
+    border: 0;
+    border-radius: 0.75rem;
+    background: var(--card-background, #20242a);
+    color: inherit;
+}
+
+.modal::backdrop {
+    background: rgba(0, 0, 0, 0.65);
+}
+
+.modal__content {
+    padding: 1.5rem;
+}
+
+.modal__header,
+.modal__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.modal__actions {
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.form-group {
+    margin-top: 1.25rem;
+}
+
+.form-group label,
+.form-group legend {
+    font-weight: 600;
+}
+
+.form-group .input {
+    width: 100%;
+    margin-top: 0.4rem;
+}
+
+fieldset.form-group {
+    display: flex;
+    gap: 1rem;
+    border: 0;
+    padding: 0;
+}
