@@ -9,12 +9,8 @@ from pydantic import BaseModel
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
-from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY
+from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
 from datetime import datetime, timezone
-
-SUPABASE_SERVICE_ROLE_KEY = os.getenv(
-    "SUPABASE_SERVICE_ROLE_KEY"
-)
 
 app = FastAPI(title="AIgentFlow API")
 security = HTTPBearer()
@@ -131,27 +127,54 @@ def login(credentials: LoginRequest):
 
         admin_client = create_client(
             SUPABASE_URL,
-            SUPABASE_SERVICE_ROLE_KEY
+            SUPABASE_PUBLISHABLE_KEY
         )
-
-        now = datetime.now(timezone.utc).isoformat()
 
         ban_response = (
             admin_client.table("bans")
-            .select("id,reason,end_time")
+            .select("id,user_id,reason,end_time,is_active")
             .eq("user_id", user.id)
             .eq("is_active", True)
-            .or_(f"end_time.is.null,end_time.gt.{now}")
-            .limit(1)
             .execute()
         )
 
-        active_bans = ban_response.data or []
+        now = datetime.now(timezone.utc).isoformat()
+        active_ban = None
 
-        if active_bans:
-            ban = active_bans[0]
+        for ban in ban_response.data or []:
             end_time = ban.get("end_time")
-            reason = ban.get("reason") or "No reason provided"
+
+            # A null end_time represents a permanent ban.
+            if end_time is None:
+                active_ban = ban
+                break
+
+            try:
+                parsed_end_time = datetime.fromisoformat(
+                    end_time.replace("Z", "+00:00")
+                )
+            except (TypeError, ValueError):
+                print(
+                    "Invalid ban end_time:",
+                    ban.get("id"),
+                    repr(end_time)
+                )
+                continue
+
+            # Ensure a timestamp without timezone information is treated
+            # consistently. Ideally the database column is timestamptz.
+            if parsed_end_time.tzinfo is None:
+                parsed_end_time = parsed_end_time.replace(
+                    tzinfo=timezone.utc
+                )
+
+            if parsed_end_time > now:
+                active_ban = ban
+                break
+
+        if active_ban is not None:
+            end_time = active_ban.get("end_time")
+            reason = (active_ban.get("reason") or "No reason provided")
 
             if end_time:
                 raise HTTPException(
@@ -180,10 +203,15 @@ def login(credentials: LoginRequest):
         }
 
     except HTTPException:
-        # Preserve the 403 ban response and other intentional errors.
         raise
 
     except AuthApiError as error:
+        print(
+            "Supabase authentication error:",
+            error.code,
+            error.message
+        )
+
         if error.code == "email_not_confirmed":
             raise HTTPException(
                 status_code=401,
@@ -199,49 +227,13 @@ def login(credentials: LoginRequest):
         print(
             "Unexpected login error:",
             type(error).__name__,
-            str(error)
+            repr(error)
         )
 
         raise HTTPException(
             status_code=500,
             detail="Unable to complete login right now"
         )
-        '''
-        client = create_client(
-            SUPABASE_URL,
-            SUPABASE_PUBLISHABLE_KEY
-        )
-
-        response = client.auth.sign_in_with_password({
-            "email": credentials.email,
-            "password": credentials.password
-        })
-
-        return {
-            "message": "Login successful",
-            "user_id": response.user.id,
-            "username": response.user.user_metadata.get("username"),
-            "access_token": response.session.access_token
-        }
-
-    except AuthApiError as error:
-        if error.code == "email_not_confirmed":
-            raise HTTPException(
-                status_code=401,
-                detail="Please confirm your email before logging in"
-            )
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
-        )
-
-    except Exception:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
-        )
- '''       
-
 
 @app.post("/register")
 def register(details: RegisterRequest):

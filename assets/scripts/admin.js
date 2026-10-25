@@ -20,6 +20,24 @@ const banEndGroup = document.getElementById("ban-end-group");
 const banEndTime = document.getElementById("ban-end-time");
 const banFormStatus = document.getElementById("ban-form-status");
 
+// Error checking
+console.log("admin.js loaded");
+console.log({
+  tableBody: Boolean(tableBody),
+  searchInput: Boolean(searchInput),
+  userCount: Boolean(userCount),
+  emptyState: Boolean(emptyState),
+  adminStatus: Boolean(adminStatus),
+  refreshButton: Boolean(refreshButton),
+  banDialog: Boolean(banDialog),
+  banForm: Boolean(banForm),
+  banUserId: Boolean(banUserId),
+  banMemberName: Boolean(banMemberName),
+  banEndGroup: Boolean(banEndGroup),
+  banEndTime: Boolean(banEndTime),
+  banFormStatus: Boolean(banFormStatus)
+});
+
 let users = [];
 
 // Checks if the user has an admin role. Transforms the role to lowercase and trims whitespace for safe comparrison.
@@ -44,6 +62,8 @@ function setAdminStatus(message, isError = false) {
 
 // Loads the admin page (navbar icon and admin dashboard) if the user is an admin. Kicks user back to dashboard.html otherwise.
 async function initializeAdminPage() {
+  // Error checking
+  console.log("initializeAdminPage started");
   const adminContent = document.getElementById("admin-content");
   const loading = document.getElementById("admin-loading");
   const navUsername = document.getElementById("nav-username");
@@ -76,6 +96,8 @@ async function initializeAdminPage() {
 
 // Loads the list of users from the backend. 
 async function loadUsers() {
+  // Error checking
+  console.log("loadUsers started");
   refreshButton.disabled = true;
   setAdminStatus("");
 

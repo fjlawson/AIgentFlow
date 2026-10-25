@@ -2,11 +2,7 @@ from datetime import datetime
 from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
-from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY
-
-SUPABASE_SERVICE_ROLE_KEY = os.getenv(
-    "SUPABASE_SERVICE_ROLE_KEY"
-)
+from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
 
 class CreateBanRequest(BaseModel):
     ban_type: Literal["temporary", "permanent"]
@@ -78,7 +74,7 @@ def require_admin(
 def list_admin_users(admin=Depends(require_admin)):
     admin_client = create_client(
         SUPABASE_URL,
-        SUPABASE_SERVICE_ROLE_KEY
+        SUPABASE_PUBLISHABLE_KEY
     )
 
     profiles_response = (
@@ -98,7 +94,7 @@ def list_admin_users(admin=Depends(require_admin)):
     )
 
     now = datetime.now(timezone.utc)
-    active_bans = {}
+    bans_by_user_id = {}
 
     for ban in bans_response.data or []:
         end_time = ban.get("end_time")
@@ -108,24 +104,34 @@ def list_admin_users(admin=Depends(require_admin)):
                 end_time.replace("Z", "+00:00")
             )
 
+            if parsed_end_time.tzinfo is None:
+                    parsed_end_time = parsed_end_time.replace(
+                        tzinfo=timezone.utc
+                    )
+
             if parsed_end <= now:
                 continue
-
-        active_bans[ban["user_id"]] = {
-            **ban,
+        except (TypeError, ValueError):
+                # Ignore records with invalid expiration values.
+                continue
+        bans_by_user_id[str(ban["user_id"])] = {
+            "reason": ban.get("reason"),
+            "start_time": ban.get("start_time"),
+            "end_time": ban.get("end_time"),
             "type": (
                 "permanent"
-                if end_time is None
+                if ban.get("end_time") is None
                 else "temporary"
             )
         }
-
     users = []
 
     for profile in profiles_response.data or []:
         users.append({
-            **profile,
-            "ban": active_bans.get(profile["id"])
+            "id": user_id,
+            "username": profile.get("username"),
+            "role": profile.get("role", "user"),
+            "ban": bans_by_user_id.get(user_id)
         })
 
     return {"users": users}
@@ -155,10 +161,10 @@ def create_user_ban(
     else:
         end_time = None
 
-    # Create a Supabase client with the service role key to perform admin actions. The publishable key doesn't have sufficient permissions.
+    # Create a Supabase client with the secret key to perform admin actions.
     admin_client = create_client(
         SUPABASE_URL,
-        SUPABASE_SERVICE_ROLE_KEY
+        SUPABASE_PUBLISHABLE_KEY
     )
 
     # Deactivates an existing ban (if applicable).
@@ -201,7 +207,7 @@ def revoke_user_ban(
 
     admin_client = create_client(
         SUPABASE_URL,
-        SUPABASE_SERVICE_ROLE_KEY
+        SUPABASE_PUBLISHABLE_KEY
     )
 
     result = (

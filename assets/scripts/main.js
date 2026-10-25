@@ -187,11 +187,49 @@ if (checkoutStatus) {
 // Admin panel access control
 // --------------------------------------------------------------------
 
-// Verify the user has admin permissions before choosing whether to show or hide
+// Verify the user has admin permissions before choosing whether to show or hide. Exported to admin.js
 export function getToken() {
   return localStorage.getItem("token");
 }
 
+// Sends a request to the backend API with the Authorization header if a token is present. Exported to admin.js.
+export async function apiRequest(path, options = {}) {
+  const token = getToken();
+
+  const headers = {
+    "Accept": "application/json",
+    ...options.headers
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(API_URL + path, {
+    ...options,
+    headers
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const detail =
+      typeof data.detail === "string"
+        ? data.detail
+        : "Request failed";
+
+    const error = new Error(
+      `${detail} (${response.status})`
+    );
+
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
+// Fetches the current user's information from the backend API. Exported to admin.js.
 export async function getCurrentUser() {
   const token = getToken();
 
@@ -311,4 +349,11 @@ async function initializeAuthorization() {
   }
 }
 
-initializeAuthorization();
+// Both main.js and admin.js have code to load the dashboard. This skips the initialization in main.js if the user is an admin.
+// It'll initialize and kick the normal user back to dashboard.html if not.
+const isAdminPage =
+  document.body.dataset.requiresAdmin === "true";
+
+if (!isAdminPage) {
+  initializeAuthorization();
+}
