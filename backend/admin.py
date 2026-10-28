@@ -1,15 +1,18 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
+import httpx
+from os import getenv
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 security = HTTPBearer()
 
 from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
 class CreateBanRequest(BaseModel):
     ban_type: Literal["temporary", "permanent"]
@@ -77,11 +80,19 @@ def require_admin(
     }
 
 # List all users with their profiles and active bans. Requires admin access.
-@app.get("/users")
+@router.get("/users")
 def list_admin_users(admin=Depends(require_admin)):
+
+    #Error-checking due to issues with empty users[] list
+    if not SUPABASE_SECRET_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="Server admin access is not configured"
+        )
+
     admin_client = create_client(
         SUPABASE_URL,
-        SUPABASE_PUBLISHABLE_KEY
+        SUPABASE_SECRET_KEY
     )
 
     profiles_response = (
@@ -90,6 +101,10 @@ def list_admin_users(admin=Depends(require_admin)):
         .order("created_at", desc=True)
         .execute()
     )
+
+    # Testing code
+    profiles = profiles_response.data or []
+    print("Admin profiles returned:", len(profiles))
 
     bans_response = (
         admin_client.table("bans")
@@ -107,20 +122,21 @@ def list_admin_users(admin=Depends(require_admin)):
         end_time = ban.get("end_time")
 
         if end_time:
-            parsed_end = datetime.fromisoformat(
-                end_time.replace("Z", "+00:00")
-            )
+            try:
+                parsed_end = datetime.fromisoformat(
+                    end_time.replace("Z", "+00:00")
+                )
 
-            if parsed_end_time.tzinfo is None:
-                    parsed_end_time = parsed_end_time.replace(
-                        tzinfo=timezone.utc
-                    )
+                if parsed_end_time.tzinfo is None:
+                        parsed_end_time = parsed_end_time.replace(
+                            tzinfo=timezone.utc
+                        )
 
-            if parsed_end <= now:
-                continue
-        except (TypeError, ValueError):
-                # Ignore records with invalid expiration values.
-                continue
+                if parsed_end <= now:
+                    continue
+            except (TypeError, ValueError):
+                    # Ignore records with invalid expiration values.
+                    continue
         bans_by_user_id[str(ban["user_id"])] = {
             "reason": ban.get("reason"),
             "start_time": ban.get("start_time"),
@@ -143,7 +159,7 @@ def list_admin_users(admin=Depends(require_admin)):
 
     return {"users": users}
 
-@app.post("/users/{user_id}/bans")
+@router.post("/users/{user_id}/bans")
 def create_user_ban(
     user_id: str,
     details: CreateBanRequest,
@@ -205,7 +221,7 @@ def create_user_ban(
     return {"ban": result.data[0]}
 
 # User unban. Utilizes the service role key to update the ban record in the database. Requires admin access.
-@app.delete("/users/{user_id}/bans")
+@router.delete("/users/{user_id}/bans")
 def revoke_user_ban(
     user_id: str,
     admin=Depends(require_admin)
