@@ -127,8 +127,8 @@ def list_admin_users(admin=Depends(require_admin)):
                     end_time.replace("Z", "+00:00")
                 )
 
-                if parsed_end_time.tzinfo is None:
-                        parsed_end_time = parsed_end_time.replace(
+                if parsed_end.tzinfo is None:
+                        parsed_end = parsed_end.replace(
                             tzinfo=timezone.utc
                         )
 
@@ -174,6 +174,52 @@ def create_user_ban(
 ):
     now = datetime.now(timezone.utc)
 
+    # Grabs the username of the user being banned to ensure they exist.
+
+    admin_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    profile_response = (
+        admin_client.table("profiles")
+        .select("id,username")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
+
+    # Ensures ban reason isn't blank.
+    reason = details.reason.strip()
+    if not reason:
+        raise HTTPException(
+            status_code=422,
+            detail="A ban reason is required"
+        )
+    
+    # Ensures that the end time is provided for temporary bans and that it includes a timezone.
+    if details.end_time.tzinfo is None:
+        raise HTTPException(
+            status_code=422,
+            detail="The end time must include a time zone"
+        )
+
+    profiles = profile_response.data or []
+
+    if not profiles:
+        raise HTTPException(
+            status_code=404,
+            detail="Member profile not found"
+        )
+    username = profiles[0].get("username")
+
+    if not username:
+        raise HTTPException(
+            status_code=422,
+            detail="Member profile has no username"
+        )
+
+    # Checks ban type and validates end time for temporary bans.
     if details.ban_type == "temporary":
         if details.end_time is None:
             raise HTTPException(
@@ -214,6 +260,7 @@ def create_user_ban(
         admin_client.table("bans")
         .insert({
             "user_id": user_id,
+            "username": username,
             "reason": details.reason.strip(),
             "start_time": now.isoformat(),
             "end_time": end_time,

@@ -18,6 +18,7 @@ app.include_router(admin_router)
 security = HTTPBearer()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
 # stand-ins until the marketplace has real teams. prices are in cents, and they live
 # here instead of the page so a user can't edit the price in their browser
@@ -129,7 +130,7 @@ def login(credentials: LoginRequest):
 
         admin_client = create_client(
             SUPABASE_URL,
-            SUPABASE_PUBLISHABLE_KEY
+            SUPABASE_SECRET_KEY
         )
 
         ban_response = (
