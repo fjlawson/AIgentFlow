@@ -12,7 +12,7 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 security = HTTPBearer()
 
 from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
-SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
+SUPABASE_SECRET_KEY = getenv("SUPABASE_SECRET_KEY")
 
 class CreateBanRequest(BaseModel):
     ban_type: Literal["temporary", "permanent"]
@@ -104,7 +104,7 @@ def list_admin_users(admin=Depends(require_admin)):
 
     # Testing code
     profiles = profiles_response.data or []
-    print("Admin profiles returned:", len(profiles))
+    print("User profiles returned:", len(profiles))
 
     bans_response = (
         admin_client.table("bans")
@@ -135,8 +135,13 @@ def list_admin_users(admin=Depends(require_admin)):
                 if parsed_end <= now:
                     continue
             except (TypeError, ValueError):
-                    # Ignore records with invalid expiration values.
-                    continue
+                # Fail rather than silently show an invalid ban as inactive.
+                raise HTTPException(
+                    status_code=500,
+                    detail="A ban record has an invalid expiration timestamp"
+                )
+        user_id = str(ban["user_id"])
+
         bans_by_user_id[str(ban["user_id"])] = {
             "reason": ban.get("reason"),
             "start_time": ban.get("start_time"),
@@ -150,6 +155,8 @@ def list_admin_users(admin=Depends(require_admin)):
     users = []
 
     for profile in profiles_response.data or []:
+        user_id = str(profile["id"])
+
         users.append({
             "id": user_id,
             "username": profile.get("username"),
@@ -187,7 +194,7 @@ def create_user_ban(
     # Create a Supabase client with the secret key to perform admin actions.
     admin_client = create_client(
         SUPABASE_URL,
-        SUPABASE_PUBLISHABLE_KEY
+        SUPABASE_SECRET_KEY
     )
 
     # Deactivates an existing ban (if applicable).
@@ -230,7 +237,7 @@ def revoke_user_ban(
 
     admin_client = create_client(
         SUPABASE_URL,
-        SUPABASE_PUBLISHABLE_KEY
+        SUPABASE_SECRET_KEY
     )
 
     result = (
