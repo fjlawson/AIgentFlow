@@ -1,6 +1,13 @@
 from datetime import datetime
 from typing import Literal, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
+from supabase import create_client
+from supabase_auth.errors import AuthApiError
+
+router = APIRouter(prefix="/admin", tags=["Admin"])
+security = HTTPBearer()
 
 from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
 
@@ -70,7 +77,7 @@ def require_admin(
     }
 
 # List all users with their profiles and active bans. Requires admin access.
-@app.get("/admin/users")
+@app.get("/users")
 def list_admin_users(admin=Depends(require_admin)):
     admin_client = create_client(
         SUPABASE_URL,
@@ -136,7 +143,7 @@ def list_admin_users(admin=Depends(require_admin)):
 
     return {"users": users}
 
-@app.post("/admin/users/{user_id}/bans")
+@app.post("/users/{user_id}/bans")
 def create_user_ban(
     user_id: str,
     details: CreateBanRequest,
@@ -198,7 +205,7 @@ def create_user_ban(
     return {"ban": result.data[0]}
 
 # User unban. Utilizes the service role key to update the ban record in the database. Requires admin access.
-@app.delete("/admin/users/{user_id}/bans")
+@app.delete("/users/{user_id}/bans")
 def revoke_user_ban(
     user_id: str,
     admin=Depends(require_admin)

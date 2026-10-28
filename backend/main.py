@@ -10,9 +10,11 @@ from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
 from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
+from admin import router as admin_router #from admin.py
 from datetime import datetime, timezone
 
 app = FastAPI(title="AIgentFlow API")
+app.include_router(admin_router)
 security = HTTPBearer()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
