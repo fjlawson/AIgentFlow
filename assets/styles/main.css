@@ -304,7 +304,7 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
     padding: 0;
     border: 0;
     border-radius: 0.75rem;
-    background: var(--card-background, #20242a);
+    background: var(--card-background, #b2bac5);
     color: inherit;
 }
 

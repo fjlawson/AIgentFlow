@@ -135,7 +135,6 @@ def list_admin_users(admin=Depends(require_admin)):
                 if parsed_end <= now:
                     continue
             except (TypeError, ValueError):
-                # Fail rather than silently show an invalid ban as inactive.
                 raise HTTPException(
                     status_code=500,
                     detail="A ban record has an invalid expiration timestamp"

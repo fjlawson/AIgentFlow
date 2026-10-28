@@ -12,6 +12,7 @@ from supabase_auth.errors import AuthApiError
 from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
 from admin import router as admin_router #from admin.py
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 app = FastAPI(title="AIgentFlow API")
 app.include_router(admin_router)
@@ -141,7 +142,7 @@ def login(credentials: LoginRequest):
             .execute()
         )
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         active_ban = None
 
         for ban in ban_response.data or []:
@@ -179,12 +180,18 @@ def login(credentials: LoginRequest):
             end_time = active_ban.get("end_time")
             reason = (active_ban.get("reason") or "No reason provided")
 
+            # Format the string into a datetime object (timezone-aware)
+            dt = datetime.fromisoformat(end_time)
+
+            # Example readable formats
+            end_time_formatted = dt.strftime("%A, %B %d, %Y at %I:%M %p")
+
             if end_time:
                 raise HTTPException(
                     status_code=403,
                     detail=(
                         "Your account is temporarily banned until "
-                        f"{end_time}. Reason: {reason}"
+                        f"{end_time_formatted}. Reason: {reason}"
                     )
                 )
 
