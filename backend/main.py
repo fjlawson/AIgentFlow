@@ -10,12 +10,16 @@ from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
 from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
-
+from admin import router as admin_router #from admin.py
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 app = FastAPI(title="AIgentFlow API")
+app.include_router(admin_router)
 security = HTTPBearer()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
 # stand-ins until the marketplace has real teams. prices are in cents, and they live
 # here instead of the page so a user can't edit the price in their browser
@@ -47,44 +51,199 @@ def root():
         "supabase": "configured"
     }
 
+# Verifies current user for admin verification. Returns user info
+@app.get("/users/me")
+def get_current_user_info(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+
+    client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+
+    try:
+        auth_response = client.auth.get_user(token)
+        auth_user = auth_response.user
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    if not auth_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    # Query as the authenticated user so Supabase Row-Level Security
+    # policies apply to this user's request.
+    client.postgrest.auth(token)
+
+    profile_response = (
+        client.table("profiles")
+        .select("username, role")
+        .eq("id", auth_user.id)
+        .maybe_single()
+        .execute()
+    )
+
+    profile = profile_response.data
+
+    if not profile:
+        raise HTTPException(
+            status_code=404,
+            detail="User profile not found"
+        )
+
+    return {
+        "id": auth_user.id,
+        "username": (
+            profile.get("username")
+            or (auth_user.user_metadata or {}).get("username")
+        ),
+        "role": profile.get("role", "user")
+    }
 
 @app.post("/login")
 def login(credentials: LoginRequest):
     try:
-        client = create_client(
+        auth_client = create_client(
             SUPABASE_URL,
             SUPABASE_PUBLISHABLE_KEY
         )
 
-        response = client.auth.sign_in_with_password({
+        auth_response = auth_client.auth.sign_in_with_password({
             "email": credentials.email,
             "password": credentials.password
         })
 
+        user = auth_response.user
+        session = auth_response.session
+
+        if not user or not session:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password"
+            )
+
+        admin_client = create_client(
+            SUPABASE_URL,
+            SUPABASE_SECRET_KEY
+        )
+
+        ban_response = (
+            admin_client.table("bans")
+            .select("id,user_id,reason,end_time,is_active")
+            .eq("user_id", user.id)
+            .eq("is_active", True)
+            .execute()
+        )
+
+        now = datetime.now(timezone.utc)
+        active_ban = None
+
+        for ban in ban_response.data or []:
+            end_time = ban.get("end_time")
+
+            # A null end_time represents a permanent ban.
+            if end_time is None:
+                active_ban = ban
+                break
+
+            try:
+                parsed_end_time = datetime.fromisoformat(
+                    end_time.replace("Z", "+00:00")
+                )
+            except (TypeError, ValueError):
+                print(
+                    "Invalid ban end_time:",
+                    ban.get("id"),
+                    repr(end_time)
+                )
+                continue
+
+            # Ensure a timestamp without timezone information is treated
+            # consistently. Ideally the database column is timestamptz.
+            if parsed_end_time.tzinfo is None:
+                parsed_end_time = parsed_end_time.replace(
+                    tzinfo=timezone.utc
+                )
+
+            if parsed_end_time > now:
+                active_ban = ban
+                break
+
+        if active_ban is not None:
+            end_time = active_ban.get("end_time")
+            reason = (active_ban.get("reason") or "No reason provided")
+
+            # Format the string into a datetime object (timezone-aware)
+            dt = datetime.fromisoformat(end_time)
+
+            # Example readable formats
+            end_time_formatted = dt.strftime("%A, %B %d, %Y at %I:%M %p")
+
+            if end_time:
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "Your account is temporarily banned until "
+                        f"{end_time_formatted}. Reason: {reason}"
+                    )
+                )
+
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Your account is permanently banned. "
+                    f"Reason: {reason}"
+                )
+            )
+
         return {
             "message": "Login successful",
-            "user_id": response.user.id,
-            "username": response.user.user_metadata.get("username"),
-            "access_token": response.session.access_token
+            "user_id": user.id,
+            "username": (
+                user.user_metadata or {}
+            ).get("username"),
+            "access_token": session.access_token
         }
 
+    except HTTPException:
+        raise
+
     except AuthApiError as error:
+        print(
+            "Supabase authentication error:",
+            error.code,
+            error.message
+        )
+
         if error.code == "email_not_confirmed":
             raise HTTPException(
                 status_code=401,
                 detail="Please confirm your email before logging in"
             )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
         )
 
-    except Exception:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
+    except Exception as error:
+        print(
+            "Unexpected login error:",
+            type(error).__name__,
+            repr(error)
         )
 
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to complete login right now"
+        )
 
 @app.post("/register")
 def register(details: RegisterRequest):

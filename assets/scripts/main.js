@@ -1,9 +1,10 @@
 // vercel.json sends /api/* to the backend, so the site and API share one address
-const API_URL = "/api";
+export const API_URL = "/api";
 
 const loginForm = document.getElementById("login-form");
 const registerForm = document.getElementById("register-form");
 const navUsername = document.getElementById("nav-username");
+let userRole = null;
 
 
 function showError(message) {
@@ -29,9 +30,16 @@ async function postForm(form, path) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    // FastAPI puts errors in "detail", but validation errors come back as a list
-    throw new Error(typeof data.detail === "string" ? data.detail : "Something went wrong. Please try again.");
+    const error = new Error(
+      typeof data.detail === "string"
+        ? data.detail
+        : "Something went wrong. Please try again."
+    );
+
+    error.status = response.status;
+    throw error;
   }
+
   return data;
 }
 
@@ -75,12 +83,9 @@ if (registerForm) {
 
 // every page with the navbar needs a logged-in user
 if (navUsername) {
-  if (!localStorage.getItem("token")) {
-    location.href = "index.html";
-  }
-  navUsername.textContent = localStorage.getItem("username") || "username";
+  navUsername.textContent =
+    localStorage.getItem("username") || "Loading…";
 }
-
 
  // getting teams from backend
 async function loadTeams() {
@@ -129,7 +134,6 @@ async function loadTeams() {
 
 loadTeams();
 
-
 // marketplace checkout
 const checkoutStatus = document.getElementById("checkout-status");
 
@@ -177,4 +181,179 @@ if (checkoutStatus) {
   } else if (result === "canceled") {
     showCheckoutStatus("Checkout canceled. You weren't charged.", true);
   }
+}
+
+// --------------------------------------------------------------------
+// Admin panel access control
+// --------------------------------------------------------------------
+
+// Verify the user has admin permissions before choosing whether to show or hide. Exported to admin.js
+export function getToken() {
+  return localStorage.getItem("token");
+}
+
+// Sends a request to the backend API with the Authorization header if a token is present. Exported to admin.js.
+export async function apiRequest(path, options = {}) {
+  const token = getToken();
+
+  const headers = {
+    "Accept": "application/json",
+    ...options.headers
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(API_URL + path, {
+    ...options,
+    headers
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const detail =
+      typeof data.detail === "string"
+        ? data.detail
+        : "Request failed";
+
+    const error = new Error(
+      `${detail} (${response.status})`
+    );
+
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
+// Fetches the current user's information from the backend API. Exported to admin.js.
+export async function getCurrentUser() {
+  const token = getToken();
+
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch(API_URL + "/users/me", {
+    method: "GET",
+    headers: {
+      "Accept": "application/json",
+      "Authorization": `Bearer ${token}`
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      typeof data.detail === "string"
+        ? data.detail
+        : `Unable to load current user (${response.status}).`
+    );
+  }
+
+  return data;
+}
+
+// Adds Admin nav item and shows/hides admin content based on the user's role
+async function initializeAuthorization() {
+  const adminNavItem = document.getElementById("admin-nav-item");
+  const usernameElement = document.getElementById("nav-username");
+  const adminContent = document.getElementById("admin-content");
+  const loadingElement = document.getElementById("admin-loading");
+
+  const requiresAdmin =
+    document.body.dataset.requiresAdmin === "true";
+
+  // Default to hidden until the backend confirms authorization.
+  if (adminNavItem) {
+    adminNavItem.hidden = true;
+  }
+
+  if (adminContent) {
+    adminContent.hidden = true;
+  }
+
+  const token = getToken();
+
+  if (!token) {
+    if (usernameElement) {
+      usernameElement.textContent = "Not signed in";
+    }
+
+    if (requiresAdmin) {
+      location.replace("index.html");
+    }
+
+    return;
+  }
+
+  try {
+    const user = await getCurrentUser();
+
+    console.log("Current user response:", {
+      id: user.id,
+      username: user.username,
+      role: user.role
+    });
+
+    const isAdmin =
+      String(user.role || "").trim().toLowerCase() === "admin";
+
+    if (usernameElement) {
+      usernameElement.textContent =
+        user.username ||
+        localStorage.getItem("username") ||
+        "User";
+    }
+
+    if (adminNavItem) {
+      adminNavItem.hidden = !isAdmin;
+    }
+
+    // Sends user back to dashboard if they try to bruteforce admin.html without admin permissions
+    if (requiresAdmin && !isAdmin) {
+      location.replace("dashboard.html");
+      return;
+    }
+
+    if (requiresAdmin && adminContent) {
+      adminContent.hidden = false;
+    }
+
+    if (loadingElement) {
+      loadingElement.hidden = true;
+    }
+  } catch (error) {
+    console.error("Authorization initialization failed:", error);
+
+    if (usernameElement) {
+      usernameElement.textContent =
+        localStorage.getItem("username") || "User";
+    }
+
+    if (loadingElement) {
+      loadingElement.textContent =
+        "Unable to verify administrator access.";
+    }
+
+    if (requiresAdmin) {
+      // Give the status message time to render before redirecting.
+      setTimeout(() => {
+        location.replace("index.html");
+      }, 1500);
+    }
+  }
+}
+
+// Both main.js and admin.js have code to load the dashboard. This skips the initialization in main.js if the user is an admin.
+// It'll initialize and kick the normal user back to dashboard.html if not.
+const isAdminPage =
+  document.body.dataset.requiresAdmin === "true";
+
+if (!isAdminPage) {
+  initializeAuthorization();
 }
