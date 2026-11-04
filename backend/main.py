@@ -369,11 +369,39 @@ async def stripe_webhook(request: Request):
 
         if not user_id or not team_id:
             raise HTTPException(status_code=400, detail="Missing user or team")
+      
+        # save the purchase to supabase
+        try:
+            db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
-        # saves the purchase to supabase later
-        print("Purchase:", session["id"], user_id, team_id)
+            purchase = {
+                "user_id": user_id,
+                "team_id": team_id,
+                "stripe_session_id": session["id"]
+            }
+
+            db.table("purchases").upsert(
+                purchase,
+                on_conflict="stripe_session_id"
+            ).execute()
+
+            # give the user their team
+            owned_team = {
+                "user_id": user_id,
+                "team_id": team_id
+            }
+
+            db.table("user_teams").upsert(
+                owned_team,
+                on_conflict="user_id,team_id"
+            ).execute()
+
+        except Exception as e:
+            print("Purchase error:", e)
+            raise HTTPException(
+                status_code=500,
+                detail="Could not save purchase"
+            )
 
         return {"status": "received"}
-
-    return {"status": "ignored"}
 
