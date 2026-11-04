@@ -420,61 +420,13 @@ async def stripe_webhook(request: Request):
         try:
             db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
-            purchase = {
-                "user_id": user_id,
-                "team_id": team_id,
-                "stripe_session_id": session["id"]
-            }
-
-            # check if this purchase was already saved
-            existing = db.table("purchases").select(
-                "user_id, team_id"
-            ).eq(
-                "stripe_session_id", session["id"]
-            ).execute()
-
-            if existing.data:
-                saved = existing.data[0]
-
-                if saved["user_id"] != user_id or saved["team_id"] != team_id:
-                    raise HTTPException(
-                        status_code=409,
-                        detail="Purchase information does not match"
-                    )
             
-            else:
-                db.table("purchases").upsert(
-                    purchase,
-                    on_conflict="stripe_session_id",
-                    ignore_duplicates=True
-                ).execute()
-
-                # check what was saved
-                saved_purchase = db.table("purchases").select(
-                    "user_id, team_id"
-                ).eq(
-                    "stripe_session_id", session["id"]
-                ).single().execute()
-
-                saved = saved_purchase.data
-
-                if saved["user_id"] != user_id or saved["team_id"] != team_id:
-                    raise HTTPException(
-                        status_code=409,
-                        detail="Purchase information does not match"
-                    )
-
-
-            # give the user their team
-            owned_team = {
-                "user_id": user_id,
-                "team_id": team_id
-            }
-
-            db.table("user_teams").upsert(
-                owned_team,
-                on_conflict="user_id,team_id"
-            ).execute()
+        # save the purchase and give the user their team
+            db.rpc("save_team_purchase", {
+                "p_user_id": user_id,
+                "p_team_id": team_id,
+                "p_session_id": session["id"]
+            }).execute()
        
         except HTTPException:
             raise
