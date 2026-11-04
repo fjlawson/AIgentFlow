@@ -296,6 +296,45 @@ def get_teams(
 
     return response.json()
 
+# get the teams the user purchased
+@app.get("/my-teams")
+def my_teams(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+
+    # check who is logged in
+    client = create_client(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+
+    try:
+        user = client.auth.get_user(token).user
+    except AuthApiError:
+        raise HTTPException(status_code=401, detail="Please log in again")
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Please log in again")
+
+    # get the user's purchased teams
+    db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+
+    result = db.table("user_teams").select("team_id").eq(
+        "user_id", user.id
+    ).execute()
+
+    teams = []
+
+    for item in result.data:
+        team_id = item["team_id"]
+
+        if team_id in MOCK_TEAMS:
+            team = MOCK_TEAMS[team_id]
+            teams.append({
+                "id": team_id,
+                "name": team["name"]
+            })
+
+    return teams
+    
 
 @app.post("/checkout")
 def checkout(
