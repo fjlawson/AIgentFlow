@@ -409,6 +409,13 @@ async def stripe_webhook(request: Request):
         if not user_id or not team_id:
             raise HTTPException(status_code=400, detail="Missing user or team")
       
+        # make sure the team exists
+        if team_id not in MOCK_TEAMS:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid team"
+            )
+
         # save the purchase to supabase
         try:
             db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
