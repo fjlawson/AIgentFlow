@@ -419,10 +419,23 @@ async def stripe_webhook(request: Request):
                 "stripe_session_id": session["id"]
             }
 
-            db.table("purchases").upsert(
-                purchase,
-                on_conflict="stripe_session_id"
+            # check if this purchase was already saved
+            existing = db.table("purchases").select(
+                "user_id, team_id"
+            ).eq(
+                "stripe_session_id", session["id"]
             ).execute()
+
+            if existing.data:
+                saved = existing.data[0]
+
+                if saved["user_id"] != user_id or saved["team_id"] != team_id:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Purchase information does not match"
+                    )
+            else:
+                db.table("purchases").insert(purchase).execute()
 
             # give the user their team
             owned_team = {
@@ -434,7 +447,10 @@ async def stripe_webhook(request: Request):
                 owned_team,
                 on_conflict="user_id,team_id"
             ).execute()
-
+       
+        except HTTPException:
+            raise
+            
         except Exception as e:
             print("Purchase error:", e)
             raise HTTPException(
