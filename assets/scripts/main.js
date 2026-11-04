@@ -183,6 +183,50 @@ if (checkoutStatus) {
   }
 }
 
+// settings page: the user's OpenRouter key
+const openRouterInput = document.getElementById("openrouter-key");
+const openRouterStatus = document.getElementById("openrouter-status");
+
+function showOpenRouterStatus(message, isError = false) {
+  openRouterStatus.textContent = message;
+  openRouterStatus.classList.toggle("status--error", isError);
+}
+
+async function loadOpenRouterStatus() {
+  try {
+    const result = await apiRequest("/openrouter/key");
+    showOpenRouterStatus(result.saved ? "Key saved." : "");
+  } catch (error) {
+    showOpenRouterStatus(error.message, true);
+  }
+}
+
+async function saveOpenRouterKey(button) {
+  button.disabled = true;
+  showOpenRouterStatus("Checking key...");
+
+  try {
+    await apiRequest("/openrouter/key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: openRouterInput.value })
+    });
+    // don't leave the key sitting on the page after it's saved
+    openRouterInput.value = "";
+    showOpenRouterStatus("Key saved.");
+  } catch (error) {
+    showOpenRouterStatus(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+if (openRouterInput) {
+  const saveButton = document.querySelector("[data-target=openrouter-key]");
+  saveButton.addEventListener("click", () => saveOpenRouterKey(saveButton));
+  loadOpenRouterStatus();
+}
+
 // --------------------------------------------------------------------
 // Admin panel access control
 // --------------------------------------------------------------------
