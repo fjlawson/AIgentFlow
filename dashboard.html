@@ -146,24 +146,30 @@
 
                 <h2 class="modal__header" id="agents-title">Agent Configuration</h2>
 
+                <!-- select dropdown of which agent to configure -->
                 <fieldset class="form-group">
                     <div class="modal__actions">
                         <label for="agent-select">Agent:</label>
+
                         <select class="input select" id="agent-select">
                         </select>
                     </div>
                 </fieldset>
       
+                <!-- input textbox for the agent's name -->
                 <fieldset class="form-group">
                     <div class="modal__actions">
                         <label for="agent-name">Name:</label>
-                        <input class="input" type="text" id="agent-name" autocomplete="off">
+
+                        <input class="input" type="text" maxlength="50" id="agent-name" autocomplete="off">
                     </div>
                 </fieldset>
 
+                <!-- select dropdown of which language model to use for that agent -->
                 <fieldset class="form-group">
                     <div class="modal__actions">
                         <label for="agent-model">Model:</label>
+
                         <select class="input select" id="agent-model">
                         </select>
                     </div>
