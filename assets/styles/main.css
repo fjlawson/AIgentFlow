@@ -280,6 +280,8 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 /* the 'View Live Agents' button could go to this state when a team's feed is already being viewed */
 .page-dashboard .team-card__btn:disabled { color: var(--text-muted-dark); text-decoration: none; cursor: not-allowed; }
 
+.agents-modal__footer { display: flex; justify-content: space-between; margin-top: 2rem; }
+
 
 /* feed components */
 .page-dashboard .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem; font-size: 1.25rem; }
