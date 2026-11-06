@@ -92,6 +92,54 @@
             </div>
         </main>
 
+        <!-- template for team cards -->
+        <template id="team-template">
+            <article class="card team-card">
+
+                <!-- card header, contains the team's title and a toggle to make the team active/inactive -->
+                <div class="team-card__margin">
+                    <div class="team-card__title">
+                        <h3 class="team-card__name" data-field="team_name">Example Team</h3>
+                    </div>
+                    
+                    <div class="team-card__status">
+                        <span class="status-text" data-field="active_status">Inactive</span>
+                        <label class="toggle">
+                            <input type="checkbox">
+                            <span class="toggle__track"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- number of agents, team's last activity, and daily cap -->
+                <p class="team-card__data"><span data-field="agentsList">0</span> agents -- Ran <span data-field="lastRun">0 seconds ago</span></p>
+                <p class="team-card__cap">Daily cap -- <strong><span data-field="tradesToday">0</span> of <span data-field="userCap"></span>0</strong> today</p>
+                
+                <!-- user-set cap with buttons to adjust it -->
+                <div class="team-card__limit">
+                    <div>Your cap for this team<br>Max <strong><span data-field="maxCap">0</span>/day</strong> -- set by AIGentFlow</div>
+                    
+                    <div class="stepper">
+                        <button type="button" class="stepper__btn" aria-label="Decrement cap">-</button>
+
+                        <span class="stepper__value" data-field="userCap">0</span>
+
+                        <button type="button" class="stepper__btn" aria-label="Increment cap">+</button>
+                    </div>
+                    
+                </div>
+
+                <!-- footer of card, contains buttons for configuring agents and live feed selection -->
+                <div class="team-card__margin">
+                    <!-- clicking this will bring up a modal for the user to select which models they'd like their agents to use -->
+                    <button type="button" class="team-card__btn">Configure Agents</button>
+                    
+                    <!-- clicking this will bring up the live feed for the team -->
+                    <button type="button" class="team-card__btn">View Live Feed</button>
+                </div>
+            </article>
+        </template>
+
         <script type="module" src="./assets/scripts/main.js"></script>
     </body>
 
