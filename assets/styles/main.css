@@ -263,8 +263,8 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 .page-dashboard .stepper__btn { padding: 0 .5rem; font: inherit; font-size: 1.5rem; background: none; border: 0; cursor: pointer; }
 .page-dashboard .stepper__value { min-width: 1.5rem; text-align: center; font-size: 2rem; }
 
-/* the buttons for Configure Agents and View Live Feed */
-.page-dashboard .team-card__btn {
+/* used for buttons to Configure Agents, View Live Feed, and Expand Live Feed */
+.page-dashboard .card__btn {
   padding: 0;
   font: inherit;
   font-size: 1.25rem;
@@ -275,10 +275,10 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
   opacity: .75;
   cursor: pointer;
 }
-.page-dashboard .team-card__btn:hover { opacity: 1; }
+.page-dashboard .card__btn:hover { opacity: 1; }
 
 /* the 'View Live Agents' button could go to this state when a team's feed is already being viewed */
-.page-dashboard .team-card__btn:disabled { color: var(--text-muted-dark); text-decoration: none; cursor: not-allowed; }
+.page-dashboard .card__btn:disabled { color: var(--text-muted-dark); text-decoration: none; cursor: not-allowed; }
 
 .agents-modal__footer { display: flex; justify-content: space-between; margin-top: 2rem; }
 

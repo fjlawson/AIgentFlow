@@ -68,11 +68,15 @@
                 <div>
                     <section class="card" id="live-feed" aria-labelledby="feed-heading">
                         <h2 class="card__title" id="feed-heading">Live Feed</h2>
-                        <ul class="feed" id="feed-list"></ul>
+                        <ul class="feed" id="feed-list">
+                            
+                        </ul>
 
-                        <p class="empty" id="feed-empty"></p>
+                            <p class="empty" id="feed-empty">No activity to be shown.</p>
                         
-                        <div class="card__footer" id="feed-footer" hidden><a class="link" href="#">Expand</a></div>
+                            <div class="card__footer" id="feed-footer" hidden>
+                                <button type="button" class="card__btn" id="expand-btn">Expand</button>
+                            </div>
                     </section>
             
                     <section class="card" style="margin-top:1.5rem" aria-labelledby="activity-heading">
@@ -86,7 +90,9 @@
                         <p class="empty" id="activity-empty">No trades yet.</p>
 
                         <!-- option to see earlier activity; this'll only start showing up after a sufficient amount of trades have been made -->
-                        <div class="card__footer" id="activity-footer" hidden><a class="link" href="#">View earlier activity</a></div>
+                        <div class="card__footer" id="activity-footer" hidden>
+                            <button type="button" class="card__btn" data-action="view-feed">View Earlier Activity</button>
+                        </div>
                     </section>
                 </div>
             </div>
@@ -132,12 +138,22 @@
                 <!-- footer of card, contains buttons for configuring agents and live feed selection -->
                 <div class="team-card__margin">
                     <!-- clicking this will bring up a modal for the user to select which models they'd like their agents to use -->
-                    <button type="button" class="team-card__btn" data-action="configure-agents">Configure Agents</button>
+                    <button type="button" class="card__btn" data-action="configure-agents">Configure Agents</button>
                     
                     <!-- clicking this will bring up the live feed for the team -->
-                    <button type="button" class="team-card__btn" data-action="view-feed">View Live Feed</button>
+                    <button type="button" class="card__btn" data-action="view-feed">View Live Feed</button>
                 </div>
             </article>
+        </template>
+
+        <!-- template for messages viewed from the live feed card -->
+        <template id="feed-item-template">
+            <!-- time, bullet point, and message -->
+            <li class="feed__item">
+                <time data-field="time">00:00</time>
+                <span class="feed__dot" data-dot></span>
+                <span data-field="summary">Example message</span>
+            </li>
         </template>
 
         <!-- Agent configuration modal, allows users to change an agent's name as well as the model it uses -->
