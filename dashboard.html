@@ -156,6 +156,15 @@
             </li>
         </template>
 
+        <!-- template for messages viewed after expanding the live feed window -->
+        <template id="feed-message-template">
+            <div class="feed-msg">
+                <time class="feed-msg__time" data-field="time">00:00</time>
+                <span class="feed-msg__dot" data-dot></span>
+                <p class="feed-msg__text" data-field="text">Example message</p>
+            </div>
+        </template>
+
         <!-- Agent configuration modal, allows users to change an agent's name as well as the model it uses -->
         <dialog class="modal" id="agents-dialog" aria-labelledby="agents-title">
             <form class="modal__content">
