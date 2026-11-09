@@ -198,6 +198,28 @@
             </form>
         </dialog>
 
+        <!-- expanded feed window -->
+        <dialog class="feed-modal" id="feed-dialog" aria-labelledby="feed-modal-title">
+            <header class="feed-modal__header">
+                <h2 class="feed-modal__title" id="feed-modal-title">Live Feed</h2>
+                <button type="button" class="btn" id="feed-close" aria-label="Close live feed">Close</button>
+            </header>
+>
+            <div class="feed-modal__layout">
+                <!-- navigation menu to switch between teams from the expanded window -->
+                <nav aria-label="Teams">
+                    <ul class="feed-modal__teams" id="feed-teams">
+                        
+                    </ul>
+                </nav>
+
+                <!-- section to view the messages agents send -->
+                <div class="feed-modal__messages" id="feed-messages" role="log" aria-label="Agent messages">
+                    
+                </div>
+            </div>
+        </dialog>
+
         <script type="module" src="./assets/scripts/main.js"></script>
     </body>
 
