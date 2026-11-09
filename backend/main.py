@@ -182,13 +182,12 @@ def login(credentials: LoginRequest):
             end_time = active_ban.get("end_time")
             reason = (active_ban.get("reason") or "No reason provided")
 
-            # Format the string into a datetime object (timezone-aware)
-            dt = datetime.fromisoformat(end_time)
+            # Format the string into a datetime object (timezone-aware) - Only runs for temp bans
+            if end_time is not None:
+                dt = datetime.fromisoformat(end_time)
+                end_time_formatted = dt.strftime("%A, %B %d, %Y at %I:%M %p")
 
-            # Example readable formats
-            end_time_formatted = dt.strftime("%A, %B %d, %Y at %I:%M %p")
-
-            if end_time:
+            if end_time is not None:
                 raise HTTPException(
                     status_code=403,
                     detail=(
@@ -196,14 +195,14 @@ def login(credentials: LoginRequest):
                         f"{end_time_formatted}. Reason: {reason}"
                     )
                 )
-
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    "Your account is permanently banned. "
-                    f"Reason: {reason}"
+            else:
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "Your account is permanently banned. "
+                        f"Reason: {reason}"
+                    )
                 )
-            )
 
         return {
             "message": "Login successful",

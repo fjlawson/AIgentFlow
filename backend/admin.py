@@ -195,13 +195,6 @@ def create_user_ban(
             status_code=422,
             detail="A ban reason is required"
         )
-    
-    # Ensures that the end time is provided for temporary bans and that it includes a timezone.
-    if details.end_time.tzinfo is None:
-        raise HTTPException(
-            status_code=422,
-            detail="The end time must include a time zone"
-        )
 
     profiles = profile_response.data or []
 
@@ -224,6 +217,13 @@ def create_user_ban(
             raise HTTPException(
                 status_code=422,
                 detail="Temporary bans require an end time"
+            )
+        
+        # Ensures that the end time is provided for temporary bans and that it includes a timezone.
+        if details.end_time.tzinfo is None:
+            raise HTTPException(
+                status_code=422,
+                detail="The end time must include a time zone"
             )
 
         if details.end_time <= now:

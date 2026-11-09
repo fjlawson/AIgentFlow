@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <style>html { visibility: hidden; }</style>
+        <script src="./assets/scripts/auth.js"></script>
+        <script>
+            const authReady = requireAuth();
+        </script>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>AIGentFlow - Marketplace</title>
@@ -15,7 +20,7 @@
         <nav class="navbar" aria-label="Main">
             <a class="navbar__logo">AIGentFlow</a>
 
-            <ul class="navbar__links" hidden>
+            <ul class="navbar__links">
                 <li><a class="navbar__link" href="dashboard.html">Dashboard</a></li>
                 <li><a class="navbar__link" href="marketplace.html" aria-current="page">Marketplace</a></li>
                 <li><a class="navbar__link" href="settings.html">Settings</a></li>
@@ -23,7 +28,15 @@
             </ul>
 
             <div class="navbar__user">
-                <span id="nav-username">username</span>
+                <button type="button" class="user-menu__toggle" id="user-menu-toggle"
+                        aria-expanded="false" aria-controls="user-menu">
+                    <span id="nav-username">username</span>
+                    <span class="user-menu__caret" aria-hidden="true">▾</span>
+                </button>
+
+                <ul class="user-menu" id="user-menu" hidden>
+                    <li><button type="button" class="user-menu__item" id="logout-btn">Log out</button></li>
+                </ul>
             </div>
         </nav>
 
@@ -51,7 +64,10 @@
                 </div>
             </section>
         </main>
-
+        <script src="./assets/scripts/auth.js"></script>
         <script type="module" src="./assets/scripts/main.js"></script>
+        <script>
+            authReady.then(user => { if (user) renderNavbar(user); });
+        </script>
     </body>
 </html>
