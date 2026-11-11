@@ -399,7 +399,8 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Bad signature")
 
     if event["type"] == "checkout.session.completed" or event["type"] == "checkout.session.async_payment_succeeded":
-        session = event["data"]["object"]
+        # newer stripe versions return an object without .get(), so make it a normal dict
+        session = event["data"]["object"].to_dict()
 
         if session.get("payment_status") != "paid":
             return {"status": "pending"}
