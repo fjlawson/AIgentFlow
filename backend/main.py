@@ -12,12 +12,14 @@ from supabase_auth.errors import AuthApiError
 from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
 from admin import router as admin_router #from admin.py
 from openrouter import router as openrouter_router
+from agents import router as agents_router #agents.py
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 app = FastAPI(title="AIgentFlow API")
 app.include_router(admin_router)
 app.include_router(openrouter_router)
+app.include_router(agents_router)
 security = HTTPBearer()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
