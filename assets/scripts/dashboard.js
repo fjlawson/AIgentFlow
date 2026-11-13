@@ -17,6 +17,26 @@ const TestTeam = {
     maxCap: 10
 }
 
+//Temporary Agents for Frontend Testing
+const TestAgents = [
+    {
+        id: 1,
+        name: "Sports Analyst",
+        model: "openAI/gpt-4o"
+    },
+    {
+        id: 2,
+        name: "Market Research",
+        model: "anthropic/claude-sonnet-4"
+    },
+    {
+        id: 3,
+        name: "Risk Evaluator",
+        model: "google/gemini-2.5-pro"
+    }
+
+];
+
 //clone the HTML template
 const TeamCard = TeamTemplate.content.cloneNode(true);
 
@@ -73,6 +93,44 @@ const ConfigureButton = TeamCard.querySelector('[data-action="configure-agents"]
 
 //find the configuration dialog in the dashboard.html file
 const AgentsDialog = document.getElementById("agents-dialog");
+
+//find agent selection, name, and model
+const AgentSelect = document.getElementById("agent-select");
+const AgentName = document.getElementById("agent-name");
+const AgentModel = document.getElementById("agent-model");
+
+//adds each agent as an option
+function PopulateAgentDropDown(){
+
+    //clear existing dropdown options
+    AgentSelect.replaceChildren();
+
+    //loop through each agent
+    TestAgents.forEach(function (Agent){
+        const Option = document.createElement("option");
+
+        Option.value = Agent.id;
+        Option.textContent = Agent.name;
+
+        AgentSelect.appendChild(Option)
+    });
+}
+
+//function that updates the name and model fields whenever someone selects an agent
+function DisplaySelectedAgent(){
+    const SelectedID = Number(AgentSelect.value);
+
+    const SelectedAgent = TestAgents.find(function (agent){
+        return Agent.id === SelectedID;
+    });
+
+    if (!SelectedAgent){
+        return
+    }
+
+    AgentName.value = SelectedAgent.name;
+    AgentModel.value = SelectedAgent.model;
+}
 
 //listen for clicks on the configure agents button
 ConfigureButton.addEventListener("click", function () {
