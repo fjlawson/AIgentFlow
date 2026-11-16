@@ -132,7 +132,8 @@ async function loadTeams() {
   }
 }
 
-loadTeams();
+//commenting out for testing
+//loadTeams();
 
 // marketplace checkout
 const checkoutStatus = document.getElementById("checkout-status");
