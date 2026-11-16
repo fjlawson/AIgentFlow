@@ -436,6 +436,22 @@ fieldset.form-group {
     padding: 0;
 }
 
+/* teams modal */
+.teams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.teams-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
 /* ** logout/nav-username components ** */
 .navbar__user {
   position: relative;
