@@ -27,7 +27,7 @@ SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 # here instead of the page so a user can't edit the price in their browser
 MOCK_TEAMS = {
     "mock-geopolitics": {"name": "Geopolitics Team", "price": 999},
-    "mock-sports-betting": {"name": "Sports Betting Team", "price": 1499},
+    "0ac117e6-5edb-4036-a0b3-f918d84935ac": {"name": "Sports Research Team", "price": 1499},
 }
 
 
