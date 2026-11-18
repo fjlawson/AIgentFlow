@@ -53,15 +53,18 @@
                     <hr class="divider">
 
                     <!-- polymarket api key section, just about the same layout as the openrouter key section -->
-                    <label class="card__subtitle" for="polymarket-key">Polymarket API key</label>
+                    <label class="card__subtitle" for="polymarket-key-id">Polymarket Key ID</label>
+                    <input class="input" id="polymarket-key-id" spellcheck="false" autocomplete="off">
 
+                    <label class="card__subtitle" for="polymarket-secret">Polymarket Secret Key</label>
                     <div class="key-row">
-                        <input class="input" id="polymarket-key" spellcheck="false">
+                        <input class="input" type="password" id="polymarket-secret" spellcheck="false" autocomplete="off">
 
-                        <button type="button" class="btn" data-target="polymarket-key" data-status="polymarket-status">Save</button>
+                        <!-- one save button covers both Polymarket fields -->
+                        <button type="button" class="btn" data-target="polymarket-key-id" data-status="polymarket-status">Save</button>
                     </div>
 
-                    <p class="hint">Scoped to trade on your behalf.</p>
+                    <p class="hint">From polymarket.us/developer. Used to place your teams' trades.</p>
 
                     <p class="status" id="polymarket-status" role="status"></p>
 
