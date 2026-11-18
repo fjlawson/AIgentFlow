@@ -361,8 +361,19 @@ function setTeamsStatus(message, isError = false) {
 
 // Converts owned and all agent team maps into array lists
 function toList(result, key) {
-  return Array.isArray(result) ? result : result?.[key] || [];
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (!Array.isArray(result?.[key])) {
+    console.warn(`Expected "${key}" array in response:`, result);
+    return [];
+  }
+
+  return result[key];
+  //return Array.isArray(result) ? result : result?.[key] || [];
 }
+  
 
 // Creates the HTML checkboxes in the modal
 function renderTeamCheckboxes(allTeams) {
@@ -406,8 +417,8 @@ async function openTeamsDialog(user) {
 
   try {
     const [allResult, ownedResult] = await Promise.all([
-      apiRequest("/admin/teams"),
-      apiRequest(`/admin/users/${encodeURIComponent(user.id)}/teams`)
+      apiRequest("/admin/agent-teams"),
+      apiRequest(`/admin/users/${encodeURIComponent(user.id)}/agent-teams`)
     ]);
 
     // Ignore the response if the dialog was closed/reopened in the meantime.
@@ -416,9 +427,9 @@ async function openTeamsDialog(user) {
     }
 
     originalTeamIds = new Set(
-      toList(ownedResult, "teams").map((team) => String(team.id))
+      toList(ownedResult, "user_agent_teams").map((team) => String(team.id))
     );
-    renderTeamCheckboxes(toList(allResult, "teams"));
+    renderTeamCheckboxes(toList(allResult, "agent_teams"));
 
     setTeamsStatus("");
     saveTeamsButton.disabled = false;

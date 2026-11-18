@@ -301,3 +301,82 @@ def revoke_user_ban(
         "message": "User unbanned",
         "updated": len(result.data or [])
     }
+
+# Agent Team Management
+@router.get("/agent-teams")
+def list_agent_teams(admin=Depends(require_admin)):
+    admin_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    teams_response = (
+        admin_client.table("teams")
+        .select("id,name,description,created_at")
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return {"agent_teams": teams_response.data or []}
+
+@router.get("/users/{user_id}/agent-teams")
+def list_user_agent_teams(user_id: str, admin=Depends(require_admin)):
+    admin_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    user_teams_response = (
+        admin_client.table("user_teams")
+        .select("team_id")
+        .eq("user_id", user_id)
+        .execute()
+    )
+
+    team_ids = [team["team_id"] for team in user_teams_response.data or []]
+
+    if not team_ids:
+        return {"user_agent_teams": []}
+
+    teams_response = (
+        admin_client.table("teams")
+        .select("id,name,description,created_at")
+        .in_("id", team_ids)
+        .execute()
+    )
+
+    return {"user_agent_teams": teams_response.data or []}
+
+@router.post("/users/{user_id}/agent-teams")
+def update_user_agent_teams(
+    user_id: str,
+    team_ids: list[str],
+    admin=Depends(require_admin)
+):
+    admin_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    # Remove existing team associations for the user
+    (
+        admin_client.table("user_teams")
+        .delete()
+        .eq("user_id", user_id)
+        .execute()
+    )
+
+    # Add new team associations for the user
+    new_associations = [
+        {"user_id": user_id, "team_id": team_id}
+        for team_id in team_ids
+    ]
+
+    if new_associations:
+        (
+            admin_client.table("user_teams")
+            .insert(new_associations)
+            .execute()
+        )
+
+    return {"message": "User agent teams updated successfully"}
