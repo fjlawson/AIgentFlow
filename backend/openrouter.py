@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime, timezone
 
@@ -65,21 +66,12 @@ def find_saved_key(user_id):
     return result.data[0]["encrypted_key"] if result.data else None
 
 
-def ask_model(user_id, model, prompt):
-    encrypted_key = find_saved_key(user_id)
-    if not encrypted_key:
-        raise HTTPException(status_code=400, detail="Add your OpenRouter key in Settings first")
-
-    try:
-        key = get_fernet().decrypt(encrypted_key.encode()).decode()
-    except InvalidToken:
-        raise HTTPException(status_code=400, detail="Your saved key can't be read. Please save it again")
-
+def send_chat(key, body):
     try:
         response = httpx.post(
             f"{OPENROUTER_URL}/chat/completions",
             headers={"Authorization": f"Bearer {key}"},
-            json={"model": model, "messages": [{"role": "user", "content": prompt}]},
+            json=body,
             # models can take a while to answer, and httpx gives up after 5 seconds by default
             timeout=60
         )
@@ -102,7 +94,41 @@ def ask_model(user_id, model, prompt):
         message = (data.get("error") or {}).get("message", "OpenRouter couldn't run that request")
         raise HTTPException(status_code=502, detail=message)
 
-    return data["choices"][0]["message"]["content"]
+    return data["choices"][0]["message"]
+
+
+def ask_model(user_id, model, prompt, tools=None, run_tool=None, max_steps=8):
+    encrypted_key = find_saved_key(user_id)
+    if not encrypted_key:
+        raise HTTPException(status_code=400, detail="Add your OpenRouter key in Settings first")
+
+    try:
+        key = get_fernet().decrypt(encrypted_key.encode()).decode()
+    except InvalidToken:
+        raise HTTPException(status_code=400, detail="Your saved key can't be read. Please save it again")
+
+    messages = [{"role": "user", "content": prompt}]
+    if not tools:
+        return send_chat(key, {"model": model, "messages": messages})["content"]
+
+    for _ in range(max_steps):
+        reply = send_chat(key, {"model": model, "messages": messages, "tools": tools})
+        if not reply.get("tool_calls"):
+            return reply["content"]
+
+        messages.append(reply)
+        for call in reply["tool_calls"]:
+            try:
+                args = json.loads(call["function"]["arguments"] or "{}")
+            except ValueError:
+                args = {}
+            messages.append({
+                "role": "tool",
+                "tool_call_id": call["id"],
+                "content": run_tool(call["function"]["name"], args)
+            })
+
+    raise HTTPException(status_code=502, detail="The model kept calling tools and never gave an answer")
 
 
 @router.get("/key")
