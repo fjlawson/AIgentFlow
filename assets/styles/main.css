@@ -319,7 +319,20 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 }
 
 .feed-modal__teams button:hover { background: #e9e9e9; }
-.feed-modal__teams button[aria-current="true"] { font-weight: 500; background: #e2e2e2; }
+/*chaning highlight color 
+.feed-modal__teams button[aria-current="true"] { font-weight: 500; background: #e2e2e2; } */
+
+/* Currently selected team */
+.feed-modal__teams button[aria-current="true"] {
+    background: var(--green-secondary);
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+/* Hover effect for unselected teams */
+.feed-modal__teams button:not([aria-current="true"]):hover {
+    background: #dce7e2;
+}
 
 @media (max-width: 700px) {
   .feed-modal__layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -338,6 +351,13 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 .page-dashboard .feed__item { display: grid; grid-template-columns: 3.5rem .75rem 1fr; gap: .75rem; align-items: start; }
 .page-dashboard .feed__dot { width: .75rem; height: .75rem; margin-top: .5rem; background: var(--dot, var(--text-muted-dark)); }
  
+/* feed viewed from live feed window */
+.feed-msg { display: flex; align-items: center; gap: .75rem; font-size: 1.25rem; }
+.feed-msg__time { color: var(--text-muted-dark); }
+.feed-msg__dot { flex: none; width: .75rem; height: .75rem; background: var(--dot, var(--text-muted-dark)); }
+.feed-msg__text { margin: .25rem; font-size: 1.5rem; line-height: 1.5; }
+
+
 /* activity table components */
 .page-dashboard .table { width: 100%; border-collapse: collapse; font-size: 1.25rem; }
 .page-dashboard .table th { padding: .2rem .5rem; text-align: left; font-weight: 400; color: var(--text-muted-dark); }

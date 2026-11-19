@@ -12,12 +12,14 @@ from supabase_auth.errors import AuthApiError
 from database import SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
 from admin import router as admin_router #from admin.py
 from openrouter import router as openrouter_router
+from polymarket import router as polymarket_router
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 app = FastAPI(title="AIgentFlow API")
 app.include_router(admin_router)
 app.include_router(openrouter_router)
+app.include_router(polymarket_router)
 security = HTTPBearer()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -398,7 +400,8 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Bad signature")
 
     if event["type"] == "checkout.session.completed" or event["type"] == "checkout.session.async_payment_succeeded":
-        session = event["data"]["object"]
+        # newer stripe versions return an object without .get(), so make it a normal dict
+        session = event["data"]["object"].to_dict()
 
         if session.get("payment_status") != "paid":
             return {"status": "pending"}

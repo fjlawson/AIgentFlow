@@ -132,7 +132,7 @@
                 
                 <!-- number of agents, team's last activity, and daily cap -->
                 <p class="team-card__data"><span data-field="numAgents">0</span> agents -- Ran <span data-field="lastRun">0 seconds ago</span></p>
-                <p class="team-card__cap">Daily cap -- <strong><span data-field="tradesToday">0</span> of <span data-field="userCap"></span>0</strong> today</p>
+                <p class="team-card__cap">Daily cap -- <strong><span data-field="tradesToday">0</span> of <span data-field="userCap">0</span></strong> today</p>
                 
                 <!-- user-set cap with buttons to adjust it -->
                 <div class="team-card__limit">
@@ -167,6 +167,15 @@
                 <span class="feed__dot" data-dot></span>
                 <span data-field="summary">Example message</span>
             </li>
+        </template>
+
+        <!-- template for messages viewed after expanding the live feed window -->
+        <template id="feed-message-template">
+            <div class="feed-msg">
+                <time class="feed-msg__time" data-field="time">00:00</time>
+                <span class="feed-msg__dot" data-dot></span>
+                <p class="feed-msg__text" data-field="text">Example message</p>
+            </div>
         </template>
 
         <!-- Agent configuration modal, allows users to change an agent's name as well as the model it uses -->
@@ -217,7 +226,7 @@
                 <h2 class="feed-modal__title" id="feed-modal-title">Live Feed</h2>
                 <button type="button" class="btn" id="feed-close" aria-label="Close live feed">Close</button>
             </header>
->
+        
             <div class="feed-modal__layout">
                 <!-- navigation menu to switch between teams from the expanded window -->
                 <nav aria-label="Teams">

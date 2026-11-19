@@ -132,7 +132,8 @@ async function loadTeams() {
   }
 }
 
-loadTeams();
+//commenting out for testing
+//loadTeams();
 
 // marketplace checkout
 const checkoutStatus = document.getElementById("checkout-status");
@@ -225,6 +226,58 @@ if (openRouterInput) {
   const saveButton = document.querySelector("[data-target=openrouter-key]");
   saveButton.addEventListener("click", () => saveOpenRouterKey(saveButton));
   loadOpenRouterStatus();
+}
+
+// settings page: the user's Polymarket key (Key ID + Secret Key)
+const polymarketKeyIdInput = document.getElementById("polymarket-key-id");
+const polymarketSecretInput = document.getElementById("polymarket-secret");
+const polymarketStatus = document.getElementById("polymarket-status");
+
+function showPolymarketStatus(message, isError = false) {
+  polymarketStatus.textContent = message;
+  polymarketStatus.classList.toggle("status--error", isError);
+}
+
+async function loadPolymarketStatus() {
+  try {
+    const result = await apiRequest("/polymarket/key");
+    let message = result.saved ? "Key saved." : "";
+    // paper mode means trades are simulated, so tell the user why nothing hits the market
+    if (result.mode === "paper") message = `${message} Trading is in paper mode right now.`;
+    showPolymarketStatus(message.trim());
+  } catch (error) {
+    showPolymarketStatus(error.message, true);
+  }
+}
+
+async function savePolymarketKey(button) {
+  button.disabled = true;
+  showPolymarketStatus("Checking key...");
+
+  try {
+    await apiRequest("/polymarket/key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key_id: polymarketKeyIdInput.value,
+        secret_key: polymarketSecretInput.value
+      })
+    });
+    // don't leave either credential sitting on the page after it's saved
+    polymarketKeyIdInput.value = "";
+    polymarketSecretInput.value = "";
+    showPolymarketStatus("Key saved.");
+  } catch (error) {
+    showPolymarketStatus(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+if (polymarketKeyIdInput) {
+  const saveButton = document.querySelector("[data-target=polymarket-key-id]");
+  saveButton.addEventListener("click", () => savePolymarketKey(saveButton));
+  loadPolymarketStatus();
 }
 
 // --------------------------------------------------------------------
