@@ -5,6 +5,7 @@ import {
   getToken
 } from "./main.js";
 
+// Element references used for creating the admin panel rows and buttons
 const tableBody = document.getElementById("user-table-body");
 const searchInput = document.getElementById("user-search");
 const userCount = document.getElementById("user-count");
@@ -12,6 +13,7 @@ const emptyState = document.getElementById("empty-state");
 const adminStatus = document.getElementById("admin-status");
 const refreshButton = document.getElementById("refresh-users");
 
+// Ban button / form
 const banDialog = document.getElementById("ban-dialog");
 const banForm = document.getElementById("ban-form");
 const banUserId = document.getElementById("ban-user-id");
@@ -19,6 +21,16 @@ const banMemberName = document.getElementById("ban-member-name");
 const banEndGroup = document.getElementById("ban-end-group");
 const banEndTime = document.getElementById("ban-end-time");
 const banFormStatus = document.getElementById("ban-form-status");
+
+// Agent team
+const teamsDialog = document.getElementById("teams-dialog");
+const teamsForm = document.getElementById("teams-form");
+const teamsUserId = document.getElementById("teams-user-id");
+const teamsMemberName = document.getElementById("teams-member-name");
+const teamsList = document.getElementById("teams-list");
+const teamsEmpty = document.getElementById("teams-empty");
+const teamsFormStatus = document.getElementById("teams-form-status");
+const saveTeamsButton = document.getElementById("save-teams");
 
 // Error checking
 console.log("admin.js loaded");
@@ -39,6 +51,9 @@ console.log({
 });
 
 let users = [];
+let teamsById = new Map();          // Converts the modal checkboxes to team IDs
+let originalTeamNames = new Set();  // Agent team IDs owned by the user before loading the menu
+let teamsLoadToken = 0;             // Incrimental value to stop stale sessions when closing/reopening the menu
 
 // Checks if the user has an admin role. Transforms the role to lowercase and trims whitespace for safe comparrison.
 function isAdmin(user) {
@@ -210,6 +225,15 @@ function createUserRow(user) {
     actions.append(banButton);
   }
 
+  // Agent teams management button
+  const teamsButton = document.createElement("button");
+  teamsButton.type = "button";
+  teamsButton.className = "btn btn--secondary";
+  teamsButton.textContent = "Teams";
+  teamsButton.dataset.action = "teams";
+  teamsButton.dataset.userId = user.id;
+  actions.append(teamsButton);
+
   actionsCell.append(actions);
   row.append(
     memberCell,
@@ -327,6 +351,157 @@ banForm.addEventListener("submit", async (event) => {
   }
 });
 
+// Agent Team Management Modal
+
+// Periodically updates the status message (loading, no changes made, saved, etc)
+function setTeamsStatus(message, isError = false) {
+  teamsFormStatus.textContent = message;
+  teamsFormStatus.classList.toggle("status--error", isError);
+}
+
+// Converts owned and all agent team maps into array lists
+function toList(result, key) {
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (!Array.isArray(result?.[key])) {
+    console.warn(`Expected "${key}" array in response:`, result);
+    return [];
+  }
+
+  return result[key];
+  //return Array.isArray(result) ? result : result?.[key] || [];
+}
+  
+
+// Creates the HTML checkboxes in the modal
+function renderTeamCheckboxes(allTeams) {
+  teamsList.replaceChildren();
+
+   const sortedTeams = [...allTeams].sort((a, b) => {
+    const aOwned = originalTeamNames.has(String(a.name));
+    const bOwned = originalTeamNames.has(String(b.name));
+
+    if (aOwned !== bOwned) {
+      return aOwned ? -1 : 1;
+    }
+
+    return a.name.localeCompare(b.name);
+  });
+
+  for (const team of sortedTeams) {
+    const label = document.createElement("label");
+    label.className = "teams-list__item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.name = "team_names";
+    checkbox.value = team.name;
+    checkbox.checked = originalTeamNames.has(team.name);
+
+    const name = document.createElement("span");
+    name.textContent = team.name;
+
+    label.append(checkbox, name);
+    teamsList.append(label);
+  }
+
+  teamsEmpty.hidden = allTeams.length !== 0;
+}
+
+async function openTeamsDialog(user) {
+  const token = ++teamsLoadToken;
+
+  teamsForm.reset();
+  teamsUserId.value = user.id;
+  teamsMemberName.textContent = user.username || user.email || user.id;
+  teamsList.replaceChildren();
+  teamsEmpty.hidden = true;
+  saveTeamsButton.disabled = true;
+  setTeamsStatus("Loading teams…");
+  teamsDialog.showModal();
+
+  try {
+    const [allResult, ownedResult] = await Promise.all([
+      apiRequest("/admin/agent-teams"),
+      apiRequest(`/admin/users/${encodeURIComponent(user.id)}/agent-teams`)
+    ]);
+
+    // Ignore the response if the dialog was closed/reopened in the meantime.
+    if (token !== teamsLoadToken) {
+      return;
+    }
+
+    originalTeamNames = new Set(
+      toList(ownedResult, "user_agent_teams").map((team) => team.name)
+    );
+    renderTeamCheckboxes(toList(allResult, "agent_teams"));
+
+    setTeamsStatus("");
+    saveTeamsButton.disabled = false;
+  } catch (error) {
+    if (token === teamsLoadToken) {
+      setTeamsStatus(error.message, true);
+    }
+  }
+}
+
+function closeTeamsDialog() {
+  // invalidate any in-flight load
+  teamsLoadToken++; 
+  teamsDialog.close();
+}
+
+document
+  .getElementById("close-teams-dialog")
+  .addEventListener("click", closeTeamsDialog);
+
+document
+  .getElementById("cancel-teams")
+  .addEventListener("click", closeTeamsDialog);
+
+teamsForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const userId = teamsUserId.value;
+
+  const selected = [
+    ...teamsList.querySelectorAll("input[type='checkbox']:checked")
+  ].map((checkbox) => checkbox.value);
+
+  const unchanged =
+    selected.length === originalTeamNames.size &&
+    selected.every((name) => originalTeamNames.has(name));
+
+  if (unchanged) {
+    setTeamsStatus("No changes to save.");
+    return;
+  }
+
+  saveTeamsButton.disabled = true;
+  setTeamsStatus("Saving…");
+
+  try {
+    await apiRequest(
+      `/admin/users/${encodeURIComponent(userId)}/agent-teams`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ team_names: selected })
+      }
+    );
+
+    teamsDialog.close();
+    setAdminStatus("Agent team access updated.");
+  } catch (error) {
+    setTeamsStatus(error.message, true);
+    saveTeamsButton.disabled = false;
+  }
+});
+
 // Handles clicks on the "Ban" and "Unban" buttons in the user table. Opens the ban dialog for banning, and confirms before unbanning.
 tableBody.addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-action]");
@@ -344,6 +519,11 @@ tableBody.addEventListener("click", async (event) => {
     return;
   }
 
+  if (button.dataset.action === "teams") {
+    openTeamsDialog(user);
+    return;
+  }
+  
   // When user clicks "Ban" button.
   if (button.dataset.action === "ban") {
     openBanDialog(user);

@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <style>html { visibility: hidden; }</style>
+        <script src="./assets/scripts/auth.js"></script>
+        <script>
+            const authReady = requireAuth();
+        </script>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>AIGentFlow - Admin Panel</title>
@@ -22,7 +27,15 @@
             </ul>
 
             <div class="navbar__user">
-                <span id="nav-username">username</span>
+                <button type="button" class="user-menu__toggle" id="user-menu-toggle"
+                        aria-expanded="false" aria-controls="user-menu">
+                    <span id="nav-username">username</span>
+                    <span class="user-menu__caret" aria-hidden="true">▾</span>
+                </button>
+
+                <ul class="user-menu" id="user-menu" hidden>
+                    <li><button type="button" class="user-menu__item" id="logout-btn">Log out</button></li>
+                </ul>
             </div>
         </nav>
 
@@ -186,6 +199,54 @@
                 </div>
             </form>
         </dialog>
+        <dialog class="modal" id="teams-dialog" aria-labelledby="teams-dialog-title">
+            <form class="modal__content" id="teams-form">
+                <header class="modal__header">
+                    <div>
+                        <h2 class="modal__title" id="teams-dialog-title">Manage agent teams</h2>
+                        <p id="teams-member-name"></p>
+                    </div>
+
+                    <button
+                        class="btn btn--secondary"
+                        id="close-teams-dialog"
+                        type="button"
+                        aria-label="Close agent teams dialog"
+                    >
+                        Close
+                    </button>
+                </header>
+
+                <input id="teams-user-id" name="user_id" type="hidden">
+
+                <fieldset class="form-group teams-fieldset">
+                    <legend>Agent teams</legend>
+                    <div class="teams-list" id="teams-list"></div>
+                    <p class="empty-state" id="teams-empty" hidden>
+                        No agent teams available.
+                    </p>
+                </fieldset>
+
+                <p
+                    class="status"
+                    id="teams-form-status"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+
+                <div class="modal__actions">
+                    <button class="btn btn--secondary" id="cancel-teams" type="button">
+                        Cancel
+                    </button>
+                    <button class="btn" id="save-teams" type="submit" disabled>
+                        Save
+                    </button>
+                </div>
+            </form>
+        </dialog>
         <script type="module" src="./assets/scripts/admin.js"></script>
+        <script>
+            authReady.then(user => { if (user) renderNavbar(user); });
+        </script>
     </body>
 </html>

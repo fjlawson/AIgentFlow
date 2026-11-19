@@ -5,6 +5,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
+from pydantic import BaseModel
 import httpx
 from os import getenv
 
@@ -18,6 +19,10 @@ class CreateBanRequest(BaseModel):
     ban_type: Literal["temporary", "permanent"]
     reason: str = Field(min_length=1, max_length=500)
     end_time: Optional[datetime] = None
+
+# Compares the provided list of team IDs with the user's current team associations and updates them accordingly.
+class UpdateUserAgentTeams(BaseModel):
+    team_names: list[str]
 
 # Checks if the current user is an admin. Returns user info and profile if they are an admin, otherwise raises an HTTPException.
 def require_admin(
@@ -195,13 +200,6 @@ def create_user_ban(
             status_code=422,
             detail="A ban reason is required"
         )
-    
-    # Ensures that the end time is provided for temporary bans and that it includes a timezone.
-    if details.end_time.tzinfo is None:
-        raise HTTPException(
-            status_code=422,
-            detail="The end time must include a time zone"
-        )
 
     profiles = profile_response.data or []
 
@@ -224,6 +222,13 @@ def create_user_ban(
             raise HTTPException(
                 status_code=422,
                 detail="Temporary bans require an end time"
+            )
+        
+        # Ensures that the end time is provided for temporary bans and that it includes a timezone.
+        if details.end_time.tzinfo is None:
+            raise HTTPException(
+                status_code=422,
+                detail="The end time must include a time zone"
             )
 
         if details.end_time <= now:
@@ -300,4 +305,114 @@ def revoke_user_ban(
     return {
         "message": "User unbanned",
         "updated": len(result.data or [])
+    }
+
+# Agent Team Management
+@router.get("/agent-teams")
+def list_agent_teams(admin=Depends(require_admin)):
+    admin_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    teams_response = (
+        admin_client.table("teams")
+        .select("id,name,description,created_at")
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return {"agent_teams": teams_response.data or []}
+
+@router.get("/users/{user_id}/agent-teams")
+def list_user_agent_teams(user_id: str, admin=Depends(require_admin)):
+    admin_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    user_teams_response = (
+        admin_client.table("user_teams")
+        .select("team_name")
+        .eq("user_id", user_id)
+        .eq("owned", True)   
+        .execute()
+    )
+
+    team_names = [row["team_name"] for row in user_teams_response.data or []]
+
+    if not team_names:
+        return {"user_agent_teams": []}
+
+    teams_response = (
+        admin_client.table("teams")
+        .select("id,name,description,created_at")
+        .in_("name", team_names)
+        .execute()
+    )
+
+    return {"user_agent_teams": teams_response.data or []}
+
+# Updates agent teams for a specific user. Works for addition and removal.
+@router.put("/users/{user_id}/agent-teams")
+def update_user_agent_teams(
+    user_id: str,
+    payload: UpdateUserAgentTeams,
+    admin=Depends(require_admin)
+):
+    admin_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    # Every row for this user, owned or not
+    existing_response = (
+        admin_client.table("user_teams")
+        .select("team_name,owned")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    rows = existing_response.data or []
+
+    known_ids = {row["team_name"] for row in rows}
+    owned_ids = {row["team_name"] for row in rows if row["owned"]}
+    desired_ids = set(payload.team_names)
+
+    to_insert = desired_ids - known_ids               # no row yet
+    to_reactivate = (desired_ids & known_ids) - owned_ids  # row exists, owned = false
+    to_revoke = owned_ids - desired_ids               # was owned, now unchecked
+
+    # Grant first so a failure never leaves the user with fewer teams
+    if to_insert:
+        (
+            admin_client.table("user_teams")
+            .insert([
+                {"user_id": user_id, "team_name": team_name, "owned": True}
+                for team_name in to_insert
+            ])
+            .execute()
+        )
+
+    if to_reactivate:
+        (
+            admin_client.table("user_teams")
+            .update({"owned": True})
+            .eq("user_id", user_id)
+            .in_("team_name", list(to_reactivate))
+            .execute()
+        )
+
+    if to_revoke:
+        (
+            admin_client.table("user_teams")
+            .update({"owned": False})
+            .eq("user_id", user_id)
+            .in_("team_name", list(to_revoke))
+            .execute()
+        )
+
+    return {
+        "message": "User agent teams updated successfully",
+        "added": len(to_insert) + len(to_reactivate),
+        "removed": len(to_revoke)
     }
