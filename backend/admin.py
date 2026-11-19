@@ -5,6 +5,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
+from pydantic import BaseModel
 import httpx
 from os import getenv
 
@@ -18,6 +19,10 @@ class CreateBanRequest(BaseModel):
     ban_type: Literal["temporary", "permanent"]
     reason: str = Field(min_length=1, max_length=500)
     end_time: Optional[datetime] = None
+
+# Compares the provided list of team IDs with the user's current team associations and updates them accordingly.
+class UpdateUserAgentTeams(BaseModel):
+    team_names: list[str]
 
 # Checks if the current user is an admin. Returns user info and profile if they are an admin, otherwise raises an HTTPException.
 def require_admin(
@@ -328,29 +333,31 @@ def list_user_agent_teams(user_id: str, admin=Depends(require_admin)):
 
     user_teams_response = (
         admin_client.table("user_teams")
-        .select("team_id")
+        .select("team_name")
         .eq("user_id", user_id)
+        .eq("owned", True)   
         .execute()
     )
 
-    team_ids = [team["team_id"] for team in user_teams_response.data or []]
+    team_names = [row["team_name"] for row in user_teams_response.data or []]
 
-    if not team_ids:
+    if not team_names:
         return {"user_agent_teams": []}
 
     teams_response = (
         admin_client.table("teams")
         .select("id,name,description,created_at")
-        .in_("id", team_ids)
+        .in_("name", team_names)
         .execute()
     )
 
     return {"user_agent_teams": teams_response.data or []}
 
-@router.post("/users/{user_id}/agent-teams")
+# Updates agent teams for a specific user. Works for addition and removal.
+@router.put("/users/{user_id}/agent-teams")
 def update_user_agent_teams(
     user_id: str,
-    team_ids: list[str],
+    payload: UpdateUserAgentTeams,
     admin=Depends(require_admin)
 ):
     admin_client = create_client(
@@ -358,25 +365,54 @@ def update_user_agent_teams(
         SUPABASE_SECRET_KEY
     )
 
-    # Remove existing team associations for the user
-    (
+    # Every row for this user, owned or not
+    existing_response = (
         admin_client.table("user_teams")
-        .delete()
+        .select("team_name,owned")
         .eq("user_id", user_id)
         .execute()
     )
+    rows = existing_response.data or []
 
-    # Add new team associations for the user
-    new_associations = [
-        {"user_id": user_id, "team_id": team_id}
-        for team_id in team_ids
-    ]
+    known_ids = {row["team_name"] for row in rows}
+    owned_ids = {row["team_name"] for row in rows if row["owned"]}
+    desired_ids = set(payload.team_names)
 
-    if new_associations:
+    to_insert = desired_ids - known_ids               # no row yet
+    to_reactivate = (desired_ids & known_ids) - owned_ids  # row exists, owned = false
+    to_revoke = owned_ids - desired_ids               # was owned, now unchecked
+
+    # Grant first so a failure never leaves the user with fewer teams
+    if to_insert:
         (
             admin_client.table("user_teams")
-            .insert(new_associations)
+            .insert([
+                {"user_id": user_id, "team_name": team_name, "owned": True}
+                for team_name in to_insert
+            ])
             .execute()
         )
 
-    return {"message": "User agent teams updated successfully"}
+    if to_reactivate:
+        (
+            admin_client.table("user_teams")
+            .update({"owned": True})
+            .eq("user_id", user_id)
+            .in_("team_name", list(to_reactivate))
+            .execute()
+        )
+
+    if to_revoke:
+        (
+            admin_client.table("user_teams")
+            .update({"owned": False})
+            .eq("user_id", user_id)
+            .in_("team_name", list(to_revoke))
+            .execute()
+        )
+
+    return {
+        "message": "User agent teams updated successfully",
+        "added": len(to_insert) + len(to_reactivate),
+        "removed": len(to_revoke)
+    }

@@ -51,9 +51,9 @@ console.log({
 });
 
 let users = [];
-let teamsById = new Map();        // Converts the modal checkboxes to team IDs
-let originalTeamIds = new Set();  // Agent team IDs owned by the user before loading the menu
-let teamsLoadToken = 0;           // Incrimental value to stop stale sessions when closing/reopening the menu
+let teamsById = new Map();          // Converts the modal checkboxes to team IDs
+let originalTeamNames = new Set();  // Agent team IDs owned by the user before loading the menu
+let teamsLoadToken = 0;             // Incrimental value to stop stale sessions when closing/reopening the menu
 
 // Checks if the user has an admin role. Transforms the role to lowercase and trims whitespace for safe comparrison.
 function isAdmin(user) {
@@ -378,23 +378,30 @@ function toList(result, key) {
 // Creates the HTML checkboxes in the modal
 function renderTeamCheckboxes(allTeams) {
   teamsList.replaceChildren();
-  teamsById = new Map();
 
-  for (const team of allTeams) {
-    const value = String(team.id);
-    teamsById.set(value, team.id);
+   const sortedTeams = [...allTeams].sort((a, b) => {
+    const aOwned = originalTeamNames.has(String(a.name));
+    const bOwned = originalTeamNames.has(String(b.name));
 
+    if (aOwned !== bOwned) {
+      return aOwned ? -1 : 1;
+    }
+
+    return a.name.localeCompare(b.name);
+  });
+
+  for (const team of sortedTeams) {
     const label = document.createElement("label");
     label.className = "teams-list__item";
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.name = "team_ids";
-    checkbox.value = value;
-    checkbox.checked = originalTeamIds.has(value);
+    checkbox.name = "team_names";
+    checkbox.value = team.name;
+    checkbox.checked = originalTeamNames.has(team.name);
 
     const name = document.createElement("span");
-    name.textContent = team.name || `Team ${team.id}`;
+    name.textContent = team.name;
 
     label.append(checkbox, name);
     teamsList.append(label);
@@ -426,8 +433,8 @@ async function openTeamsDialog(user) {
       return;
     }
 
-    originalTeamIds = new Set(
-      toList(ownedResult, "user_agent_teams").map((team) => String(team.id))
+    originalTeamNames = new Set(
+      toList(ownedResult, "user_agent_teams").map((team) => team.name)
     );
     renderTeamCheckboxes(toList(allResult, "agent_teams"));
 
@@ -464,8 +471,8 @@ teamsForm.addEventListener("submit", async (event) => {
   ].map((checkbox) => checkbox.value);
 
   const unchanged =
-    selected.length === originalTeamIds.size &&
-    selected.every((id) => originalTeamIds.has(id));
+    selected.length === originalTeamNames.size &&
+    selected.every((name) => originalTeamNames.has(name));
 
   if (unchanged) {
     setTeamsStatus("No changes to save.");
@@ -477,16 +484,13 @@ teamsForm.addEventListener("submit", async (event) => {
 
   try {
     await apiRequest(
-      `/admin/users/${encodeURIComponent(userId)}/teams`,
+      `/admin/users/${encodeURIComponent(userId)}/agent-teams`,
       {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          // Send back the original id type (number or string) from the API.
-          team_ids: selected.map((id) => teamsById.get(id))
-        })
+        body: JSON.stringify({ team_names: selected })
       }
     );
 
