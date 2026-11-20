@@ -43,26 +43,19 @@
         <main class="container">
             <h1 class="page-title">Dashboard</h1>
         
-            <!-- summary stats; these contain placeholder values to be filled in once the user gets a team / starts to trade -->
+            <!-- stats containing the portfolio's value and a graphical representation -->
             <section class="stats" aria-label="Summary">
                 <div class="card stat">
                     <span class="stat__label">Portfolio Value</span>
                     <span class="stat__value" data-stat="portfolioValue">--</span>
                 </div>
-                <div class="card stat">
-                    <span class="stat__label">Today's Value</span>
-                    <span class="stat__value" data-stat="todayValue">--</span>
-                </div>
-                <div class="card stat">
-                    <span class="stat__label">Teams Owned</span>
-                    <span class="stat__value">
-                    <span data-stat="teamsOwned">--</span>
-                    <span class="stat__unit">of <span data-stat="teamsActive">--</span> active</span>
-                    </span>
-                </div>
-                <div class="card stat">
-                    <span class="stat__label">Trades Today</span>
-                    <span class="stat__value" data-stat="tradesToday">--</span>
+
+                <!-- portfolio line graph -->
+                <div class="chart" id="chart-wrap" hidden>
+                    <canvas id="portfolio-chart" role="img" aria-label="Portfolio value over time">
+                    
+                    </canvas>
+                    <p class="empty" id="chart-empty">No portfolio history yet.</p>
                 </div>
             </section>
         

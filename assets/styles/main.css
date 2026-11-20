@@ -239,6 +239,8 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 .page-dashboard .stat__value--negative { color: var(--negative); }
 .page-dashboard .stat__unit { font-size: 1.5rem; color: var(--text-muted-dark); }
 
+.page-dashboard .chart { position: relative; height: 20rem; }
+
 
 /* remaining dashboard layout setup */
 .page-dashboard .dashboard-grid {
