@@ -59,6 +59,8 @@
 
         </main>
         <script type="module" src="./assets/scripts/main.js"></script>
+        <!-- Needed for calling redirectifLoggedIn (utilizes session ID to skip login page) -->
+        <script type="module" src="./assets/scripts/auth.js"></script>
         <script>
             redirectIfLoggedIn();
         </script>
