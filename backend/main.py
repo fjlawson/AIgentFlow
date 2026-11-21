@@ -5,7 +5,8 @@ import stripe
 
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from uuid import UUID
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
@@ -32,6 +33,12 @@ MOCK_TEAMS = {
     "mock-sports-betting": {"name": "Sports Betting Team", "price": 1499},
 }
 
+#allowed agent models, can change when verified what AI models we are using
+ALLOWED_AGENT_MODELS = {
+    "openAI/gpt-4o",
+    "anthropic/claude-sonnet-4",
+    "google/gemini-2.5-pro"
+}
 
 class LoginRequest(BaseModel):
     email: str
@@ -47,6 +54,18 @@ class RegisterRequest(BaseModel):
 class CheckoutRequest(BaseModel):
     team_id: str
 
+class UpdateTeamCapRequest(BaseModel):
+    daily_trade_cap: int = Field(
+        ge = 0,
+        le = 50, 
+        strict = True
+    )
+
+class UpdateTeamStatusRequest(BaseModel):
+    is_enabled: bool = Field(strict = True)
+
+class UpdateAgentModelRequest(BaseModel):
+    model : str = Field(min_length = 1, max_length = 150)
 
 @app.get("/")
 def root():
@@ -320,24 +339,364 @@ def my_teams(
     # get the user's purchased teams
     db = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
-    result = db.table("user_teams").select("team_id").eq(
-        "user_id", user.id
-    ).execute()
+    result = (
+        db.table("user_teams")
+        .select("id, team_name, owned, daily_trade_cap, is_enabled")
+        .eq("user_id", user.id)
+        .eq("owned",True)
+
+    .execute()
+    )
 
     teams = []
 
-    for item in result.data:
-        team_id = item["team_id"]
-
-        if team_id in MOCK_TEAMS:
-            team = MOCK_TEAMS[team_id]
-            teams.append({
-                "id": team_id,
-                "name": team["name"]
-            })
-
+    for item in result.data or []:
+        teams.append({
+            "id" : item["id"],
+            "name" : item["team_name"],
+            "daily_trade_cap" : item["daily_trade_cap"],
+            "is_enabled" : item["is_enabled"]
+        })
+        
     return teams
     
+
+@app.patch("/my-teams/{user_team_id}/cap")
+def update_team_cap(
+    user_team_id: UUID,
+    settings: UpdateTeamCapRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    #Authenticate the logged in user
+    client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+    #Creat SupeBase client for backend database operations
+    db = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+    try:
+        user = client.auth.get_user(
+            credentials.credentials
+        ).user
+    except AuthApiError:
+        raise HTTPException(
+            status_code = 401,
+            detail = "Please log in again"
+        )
+    if not user:
+        raise HTTPException(
+            status_code = 401,
+            detail = "Please log in again"
+        )
+
+    #Update only a team owned by the authenticated user
+    result = (
+        db.table("user_teams")
+        .update({"daily_trade_cap": settings.daily_trade_cap})
+        .eq("id",str(user_team_id))
+        .eq("user_id", user.id)
+        .eq("owned", True)
+        .execute()
+    )
+    
+    if not result.data:
+        raise HHTPException(
+            status_code=404,
+            detail="Owned team not found."
+        )
+
+    updated_team = result.data[0]
+
+    return {
+        "id": updated_team["id"],
+        "daily_trade_cap" : updated_team["daily_trade_cap"]
+    }
+
+
+@app.patch("/my-teams/{user_team_id}/status")
+def update_team_status(
+    user_team_id: UUID,
+    settings: UpdateTeamStatusRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    # Identify the authenticated user
+    client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+
+    try:
+        user = client.auth.get_user(
+            credentials.credentials
+        ).user
+
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    # Backend only database client
+    db = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    # Only update an owned team belonging to this user
+    result = (
+        db.table("user_teams")
+        .update({
+            "is_enabled": settings.is_enabled
+        })
+        .eq("id", str(user_team_id))
+        .eq("user_id", user.id)
+        .eq("owned", True)
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Owned team not found"
+        )
+
+    updated_team = result.data[0]
+
+    return {
+        "id": updated_team["id"],
+        "is_enabled": updated_team["is_enabled"]
+    }
+
+
+@app.get("/my-teams/{user_team_id}/agents")
+def get_team_agents(
+    user_team_id: UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    # Step 1: Identify the logged-in user
+    client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+
+    try:
+        user = client.auth.get_user(
+            credentials.credentials
+        ).user
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    # Step 2: Create the backend database client
+    db = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    # Step 3: Verify this user owns the requested team
+    owned = (
+        db.table("user_teams")
+        .select("id, team_name")
+        .eq("id", str(user_team_id))
+        .eq("user_id", user.id)
+        .eq("owned", True)
+        .execute()
+    )
+
+    if not owned.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Owned team not found"
+        )
+
+    team_name = owned.data[0]["team_name"]
+
+    # Step 4: Find the matching catalog team
+    catalog = (
+        db.table("teams")
+        .select("id")
+        .eq("name", team_name)
+        .execute()
+    )
+
+    if len(catalog.data or []) != 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Team catalog mapping is missing or ambiguous"
+        )
+
+    catalog_team_id = catalog.data[0]["id"]
+
+    # Step 5: Load the team's predefined agents
+    agents = (
+        db.table("team_agents")
+        .select("id, name, role, default_model")
+        .eq("team_id", catalog_team_id)
+        .execute()
+    )
+
+    # Step 6: Load this user's model selections
+    settings = (
+        db.table("user_agent_settings")
+        .select("team_agent_id, model")
+        .eq("user_team_id", str(user_team_id))
+        .execute()
+    )
+
+    # Create a lookup of saved models
+    selected_models = {
+        item["team_agent_id"]: item["model"]
+        for item in (settings.data or [])
+    }
+
+    # Step 7: Build the response
+    result = []
+
+    for agent in agents.data or []:
+        result.append({
+            "id": agent["id"],
+            "name": agent["name"],
+            "role": agent["role"],
+            "model": selected_models.get(
+                agent["id"],
+                agent["default_model"]
+            )
+        })
+
+    return result
+
+
+@app.put("/my-teams/{user_team_id}/agents/{agent_id}/model")
+def update_agent_model(
+    user_team_id: UUID,
+    agent_id: UUID,
+    settings: UpdateAgentModelRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    # 1. Verify the user's authentication token
+    auth_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+
+    try:
+        user = auth_client.auth.get_user(
+            credentials.credentials
+        ).user
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    # 2. Validate the selected model
+    if settings.model not in ALLOWED_AGENT_MODELS:
+        raise HTTPException(
+            status_code=422,
+            detail="Unsupported AI model"
+        )
+
+    # 3. Connect to Supabase from the backend
+    db = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    # 4. Verify ownership of the purchased team
+    owned = (
+        db.table("user_teams")
+        .select("id, team_name")
+        .eq("id", str(user_team_id))
+        .eq("user_id", user.id)
+        .eq("owned", True)
+        .execute()
+    )
+
+    if not owned.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Owned team not found"
+        )
+
+    # 5. Find the catalog team
+    catalog = (
+        db.table("teams")
+        .select("id")
+        .eq("name", owned.data[0]["team_name"])
+        .execute()
+    )
+
+    if len(catalog.data or []) != 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Team catalog mapping is invalid"
+        )
+
+    catalog_team_id = catalog.data[0]["id"]
+
+    # 6. Verify the agent belongs to this team
+    agent = (
+        db.table("team_agents")
+        .select("id")
+        .eq("id", str(agent_id))
+        .eq("team_id", catalog_team_id)
+        .execute()
+    )
+
+    if not agent.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Agent not found in this team"
+        )
+
+    # 7. Save the model selection
+    result = (
+        db.table("user_agent_settings")
+        .upsert(
+            {
+                "user_team_id": str(user_team_id),
+                "team_agent_id": str(agent_id),
+                "model": settings.model
+            },
+            on_conflict="user_team_id,team_agent_id"
+        )
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to save model selection"
+        )
+
+    return {
+        "team_agent_id": str(agent_id),
+        "model": result.data[0]["model"]
+    }
+
 
 @app.post("/checkout")
 def checkout(

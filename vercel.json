@@ -1,5 +1,6 @@
 {
-  "buildCommand": "mkdir -p public && cp -r *.html assets public/",
+  "_buildCommand": "mkdir -p public && cp -r *.html assets public/",
+  "buildCommand": "node scripts/build.mjs",
   "outputDirectory": "public",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" }

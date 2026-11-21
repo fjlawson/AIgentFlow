@@ -192,7 +192,7 @@
                     <div class="modal__actions">
                         <label for="agent-name">Name:</label>
 
-                        <input class="input" type="text" maxlength="50" id="agent-name" autocomplete="off">
+                        <input class="input" type="text" maxlength="50" id="agent-name" readonly>
                     </div>
                 </fieldset>
 
@@ -235,6 +235,7 @@
             </div>
         </dialog>
         <script type="module" src="./assets/scripts/main.js"></script>
+        <script type="module" src="./assets/scripts/dashboard.js"></script>
         <script>
             authReady.then(user => { if (user) renderNavbar(user); });
         </script>

@@ -29,6 +29,8 @@ const CancelButton = document.getElementById("agents-cancel"); //find cancel but
 let ConfiguringTeamID = null; //needed for "configure agents" team card, to help identify which agent is selected
 let CurrentTeams = [];        //Array for currently displayed teams
 let SelectedTeamID = 1;       //create selected Team ID for populate feed teams default value
+let CurrentAgents = [];       //empty array for Current agents
+
 
 //####### Functions ########
 //function to load teams owned by logged in user
@@ -172,6 +174,316 @@ function CreateTeamCard(Team){
 
 }
 
+//function to load test agents
+async function TestLoadAgents(TeamID){
+    try {
+        const Agents = await apiRequest (`/my-teams/${TeamID}/agents`);
+        //console.log("Agents returned from Supabase: ", Agents);
+    } catch (error){
+        console.error("Unable to retrieve agents: ", error);
+    }
+}
+
+//function that Creates a tean card using the fields currently returned by /my-teams
+function CreateOwnedTeamCard(Team){
+   
+    // Create the teams card
+    const Card = document.createElement("article");
+    Card.className="card team-card"
+
+    //Create maximum daily trade cap
+    const MAX_DAILY_CAP = 50;
+
+    //Team name
+    const TeamName = document.createElement("h3");
+    TeamName.className = "team-card__name";
+    TeamName.textContent = Team.name || "Unnamed Team";
+
+    //Display wether the team is enabled
+    const TeamStatus = document.createElement("p");
+    const StatusToggle = document.createElement("input");
+    TeamStatus.textContent = Team.is_enabled ? "Status: Active" : "Status : Inactive";
+    StatusToggle.type = "checkbox";
+    StatusToggle.checked = Team.is_enabled === true;
+    //create the label that holds the toggle switch
+    const ToggleLabel = document.createElement("label");
+    ToggleLabel.className = "toggle";
+    //create the visual slider
+    const ToggleTrack = document.createElement("span");
+    ToggleTrack.className = "toggle__track";
+
+    //place both elements inside the label
+    ToggleLabel.appendChild(StatusToggle);
+    ToggleLabel.appendChild(ToggleTrack);
+
+    // Create the header container
+    const TeamHeader = document.createElement("div");
+    TeamHeader.className = "team-card__margin";
+
+    // Group the team's status and toggle
+    const StatusContainer = document.createElement("div");
+    StatusContainer.className = "team-card__status";
+
+    // Add status text and toggle
+    StatusContainer.appendChild(TeamStatus);
+    StatusContainer.appendChild(ToggleLabel);
+
+    // Add team name and status controls to the header
+    TeamHeader.appendChild(TeamName);
+    TeamHeader.appendChild(StatusContainer);
+
+    //Give the checkbox an accessible label
+    StatusToggle.setAttribute("aria-label", `Enable or Disable ${Team.name}`);
+    
+    //status toggle event listener
+    StatusToggle.addEventListener("change", async function () {
+        
+        const NewStatus = StatusToggle.checked;
+
+        //prevent repeated updates while saving
+        StatusToggle.disabled = true;
+
+        try {
+            const Updated = await apiRequest(
+                `/my-teams/${Team.id}/status`,
+                {
+                    method: "PATCH",
+                    headers: {"Content-Type" : "application/json"},
+                    body: JSON.stringify({is_enabled: NewStatus})
+                }
+            );
+            //Update local data after succesful save
+            Team.is_enabled = Updated.is_enabled;
+
+            TeamStatus.textContent = Team.is_enabled ? "Status: Active" : "Status: Inactive";
+
+        }catch (error){
+            console.error("Unable to update team status: ", error);
+            //Restore the previous value if the request failed
+            StatusToggle.checked = Team.is_enabled === true;
+            alert("Unable to save team status.");
+        } finally {
+            StatusToggle.disabled = false;
+        }
+    });
+
+
+    //Display the user's daily trade cap
+    const TradeCap = document.createElement("p");
+    TradeCap.textContent = "Daily Trade Cap: " + Team.daily_trade_cap;
+
+    //create container for the adjustment buttons
+    const Stepper = document.createElement("div");
+    Stepper.className = "stepper";
+
+    //Decrement button
+    const DecrementButton = document.createElement("button");
+    DecrementButton.type = "button";
+    DecrementButton.className = "stepper__btn";
+    DecrementButton.textContent = "-";
+    DecrementButton.setAttribute("aria-label", "Decrease daily trading cap");
+
+    //Display the current Cap
+    const CapValue = document.createElement("span");
+    CapValue.className = "stepper__value";
+
+    //Increment button
+    const IncrementButton = document.createElement("button");
+    IncrementButton.type = "button";
+    IncrementButton.className = "stepper__btn";
+    IncrementButton.textContent = "+";
+    IncrementButton.setAttribute("aria-label", "Increase daily trading cap");
+
+
+    //Add all three elements to the container
+    Stepper.append(
+        DecrementButton,
+        CapValue,
+        IncrementButton
+    );
+
+    //create configure agents button
+    const ConfigureButton = document.createElement("button");
+    ConfigureButton.type = "button";
+    ConfigureButton.className = "card__btn";
+    ConfigureButton.textContent = "Configure Agents";
+
+    ConfigureButton.addEventListener("click", async function() {
+        ConfiguringTeamID = String(Team.id);
+        console.log("Configuring Team: ", ConfiguringTeamID);
+        await LoadTeamAgents(ConfiguringTeamID);
+    });
+
+
+    function UpdateCapDisplay(){
+
+        const CurrentCap = Number(Team.daily_trade_cap);
+
+        //update both displayed values
+        CapValue.textContent = CurrentCap;
+        TradeCap.textContent = "Daily Trade Cap: " + CurrentCap + " /50";
+
+        //Disable buttons at the boundaries
+        DecrementButton.disabled = CurrentCap <= 0;
+        IncrementButton.disabled = CurrentCap >= MAX_DAILY_CAP;
+    }
+
+    async function ChangeDailyCap(Amount) {
+        
+        const CurrentCap = Number(Team.daily_trade_cap);
+        const NewCap = CurrentCap + Amount;
+
+        //Validate before requesting the backend
+        if (NewCap < 0 || NewCap > MAX_DAILY_CAP){
+            return;
+        }
+
+        //prevent multiple simultaneous requests
+        DecrementButton.disabled = true;
+        IncrementButton.disabled = true;
+
+        try {
+
+            const Updated = await apiRequest(
+                `/my-teams/${Team.id}/cap`,
+                {
+                    method : "PATCH",
+                    headers : {"Content-Type" : "application/json"},
+                    body : JSON.stringify({daily_trade_cap : NewCap})
+                }
+            );
+
+        //Only update local data after succesful save
+        Team.daily_trade_cap = Updated.daily_trade_cap;
+
+        //console.log("Updated daily cap: ", Updated)
+
+        } catch (error){
+            console.error("Failed to save daily cap: ", error);
+            alert("Unable to save your daily trading cap.");
+        } finally {
+            UpdateCapDisplay();
+        }
+    }
+
+    DecrementButton.addEventListener("click", function() {
+        ChangeDailyCap(-1);
+    });
+
+    IncrementButton.addEventListener("click", function() {
+        ChangeDailyCap(1);
+    });
+
+
+
+    //Details button
+    const DetailsButton = document.createElement("button");
+    DetailsButton.type = "button";
+    DetailsButton.className = "card__btn";
+    DetailsButton.textContent = "View Details";
+
+    DetailsButton.addEventListener("click", function (){
+        //console.log("Selected Team: ", Team.name);
+        TestLoadAgents(Team.id);
+    });
+
+    // initialize displayed cap and button states
+    UpdateCapDisplay();
+
+    //Add Elements to card
+    //Card.appendChild(TeamName);
+    //Card.appendChild(TeamStatus);
+    //Card.appendChild(ToggleLabel);
+    //Card.appendChild(TradeCap);
+    //Card.appendChild(Stepper);
+    //Card.appendChild(DetailsButton);
+    //
+    Card.appendChild(TeamHeader);
+    Card.appendChild(TradeCap);
+    Card.appendChild(Stepper);
+    Card.appendChild(DetailsButton);
+    Card.appendChild(ConfigureButton);
+
+    return Card;
+}
+
+
+//load team agents function
+async function LoadTeamAgents(TeamID) {
+
+    //clear information from previously selected teams
+    CurrentAgents = [];
+    AgentSelect.replaceChildren();
+    AgentModel.replaceChildren();
+    AgentName.value = "";
+
+    //ConfigureButtonLoading(true);
+
+    try {
+
+        const Agents = await apiRequest(
+            `/my-teams/${TeamID}/agents`
+        );
+
+        console.log("Agents retrieved:", Agents);
+
+        CurrentAgents = Agents;
+
+        PopulateRealAgentDropdown();
+
+        AgentsDialog.showModal();
+
+    } catch (error) {
+
+        console.error("Unable to load team agents:", error);
+
+        alert("Unable to retrieve this team's agents.");
+
+    } finally {
+       //ConfigureButtonLoading(false);
+    }
+    
+}
+
+//function to populate agent drop down in configure menu
+function PopulateRealAgentDropdown(){
+    
+    AgentSelect.replaceChildren();
+
+    if (CurrentAgents.length === 0) {
+        
+        const Option = document.createElement("option");
+
+        Option.textContent = "No Agents Configured Yet";
+        Option.disabled = true;
+        Option.selected = true;
+
+        AgentSelect.appendChild(Option);
+
+        AgentSelect.disabled = true;
+        AgentModel.disabled = true;
+        SaveButton.disabled = true;
+
+        return;
+    }
+
+    AgentSelect.disabled = false;
+    AgentModel.disabled = false;
+
+    CurrentAgents.forEach(function(Agent){
+        const Option = document.createElement("option");
+
+        Option.value = Agent.id;
+        Option.textContent = Agent.name;
+
+        AgentSelect.appendChild(Option);
+    });
+
+    SaveButton.disabled = CurrentAgents.length === 0; 
+    DisplayRealSelectedAgent();
+}
+
+
 //function to display all teams
 function DisplayTeams(Teams){
 
@@ -184,7 +496,7 @@ function DisplayTeams(Teams){
     //loop through the teams
     Teams.forEach(function (Team){
         
-        const TeamCard = CreateTeamCard(Team)
+        const TeamCard = CreateOwnedTeamCard(Team)
 
         TeamList.appendChild(TeamCard);
     });
@@ -204,7 +516,7 @@ async function PreviewOwnedTeams() {
     try{
         const Teams = await apiRequest("/my-teams");
 
-        console.log("Teams returned by supabase: ", Teams);
+        //console.log("Teams returned by supabase: ", Teams);
 
         return Teams;
     } catch (error){
@@ -258,6 +570,39 @@ function DisplaySelectedAgent(){
     AgentModel.value = SelectedAgent.model;
 }
 
+//function that displays the real selected agent
+function DisplayRealSelectedAgent(){
+     const SelectedAgent = CurrentAgents.find(function (Agent) {
+        return String(Agent.id) === AgentSelect.value;
+    });
+
+    if (!SelectedAgent) {
+        AgentName.value = "";
+        AgentModel.replaceChildren();
+        return;
+    }
+
+    // Names are fixed, so users cannot edit them
+    AgentName.value = SelectedAgent.name;
+    AgentName.readOnly = true;
+
+    // Populate available models
+    AgentModel.replaceChildren();
+
+    TestModels.forEach(function (Model) {
+
+        const Option = document.createElement("option");
+
+        Option.value = Model.id;
+        Option.textContent = Model.name;
+
+        AgentModel.appendChild(Option);
+    });
+
+    // Select the model returned by Supabase
+    AgentModel.value = SelectedAgent.model;
+}
+
 //function that updates model dropdown menu
 function PopulateModelDropdown(){
     
@@ -273,46 +618,15 @@ function PopulateModelDropdown(){
     });
 }
 
-//Save changes to the selected Agent
-SaveButton.addEventListener("click", function (){
 
-    console.log("Save button pressed.")
-
-    //get the currently selected agent's ID
-    const SelectedID = Number(AgentSelect.value);
-
-    //find the corresponding agent in our array
-    const SelectedAgent = TestAgents.find(function (Agent){
-        return Agent.id === SelectedID && Number(Agent.teamId) === ConfiguringTeamID;
-    });
-
-    //Make sure Agent was found
-    if (!SelectedAgent){
-        console.log("Agent was not found.")
-        return;
-    }
-
-    //Make sure user enter a name in the name field
-    const NewName = AgentName.value.trim(); //trim() removes whitespaces around entered name
-
-    if(NewName === ""){
-        alert("Please enter an Agent Name.")
-        return;
-    }
-
-    //update our temporary agent object
-    SelectedAgent.name = NewName;
-    SelectedAgent.model = AgentModel.value;
-
-    console.log("Agent updated: ", SelectedAgent);
-
-    //close configuration window
-    AgentsDialog.close();
-
-});
 
 //function to update dashboard stats on top of screen (portfolio value, todays value, Teams Owned, Trades today)
 function UpdateDashboardStats(Teams) {
+    //create web elements
+    const OwnedElement = document.querySelector('[data-stat="teamsOwned"]');
+    const ActiveElement = document.querySelector('[data-stat="teamsActive"]');
+    const TradesElement =  document.querySelector('[data-stat="tradesToday"]');
+    
     //Total number of teams
     const TeamsOwned = Teams.length;
 
@@ -326,10 +640,21 @@ function UpdateDashboardStats(Teams) {
         return Total + Team.tradesToday;
     }, 0); //Total = 0, add each teams.tradesToday to the total
 
-    //Update Dashboard HTML
-    document.querySelector('[data-stat="teamsOwned"]').textContent = TeamsOwned;
-    document.querySelector('[data-stat="teamsActive"]').textContent = TeamsActive;
-    document.querySelector('[data-stat="tradesToday"]').textContent = TradesToday;
+    //Update HTML quantities if they exist
+    if (OwnedElement){
+        OwnedElement.textContent = TeamsOwned;
+    }
+
+    if (ActiveElement){
+        ActiveElement.textContent = TeamsActive;
+    }
+
+    if (TradesElement){
+        TradesElement.textContent = TradesToday;
+    }
+    
+    
+   
 }
 
 
@@ -340,7 +665,7 @@ FeedCloseButton.addEventListener("click", function() {
 
 
 AgentSelect.addEventListener("change", function() {
-   DisplaySelectedAgent(); 
+   DisplayRealSelectedAgent(); 
 });
 
 //populate dashboard feed
@@ -463,6 +788,62 @@ CancelButton.addEventListener("click", function () {
 
 });
 
+SaveButton.addEventListener("click", async function() {
+    // Identify the agent selected in the dropdown
+    const SelectedAgentID = AgentSelect.value;
+
+    // Get the selected AI model
+    const SelectedModel = AgentModel.value;
+
+    // Ensure we have the required information
+    if (!ConfiguringTeamID || !SelectedAgentID || !SelectedModel) {
+        alert("Please select an agent and model.");
+        return;
+    }
+
+    // Prevent duplicate save requests
+    SaveButton.disabled = true;
+
+    try {
+
+        const Updated = await apiRequest(
+            `/my-teams/${ConfiguringTeamID}/agents/${SelectedAgentID}/model`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: SelectedModel
+                })
+            }
+        );
+
+        // Update the local agent data
+        const SelectedAgent = CurrentAgents.find(function (Agent) {
+            return String(Agent.id) === SelectedAgentID;
+        });
+
+        if (SelectedAgent) {
+            SelectedAgent.model = Updated.model;
+        }
+
+        console.log("Agent model saved:", Updated);
+
+        // Close the configuration dialog
+        AgentsDialog.close();
+
+    } catch (error) {
+
+        console.error("Unable to save agent model:", error);
+        alert("Unable to save the selected AI model.");
+
+    } finally {
+
+        SaveButton.disabled = false;
+
+    }
+});
 
 
 
@@ -578,13 +959,33 @@ const TestTeams = [
 
 //####### Function Calls ############
 //initialize dashboard feed
-PopulateDashboardFeed();
+//PopulateDashboardFeed();
 
 //call Load Owned Teams function
-LoadOwnedTeams();
+//LoadOwnedTeams();
 
 //call display teams function and pass TestTeams for now
-DisplayTeams(TestTeams);
+//DisplayTeams(TestTeams);
 
-//Actual Backend call
-LoadOwnedTeams();
+authReady.then(function(user){
+    if (user){
+        InitializeDashboard()
+    }
+});
+
+async function InitializeDashboard() {
+    
+    try {
+        const Teams = await apiRequest("/my-teams");
+        console.log("Owned Teams: ", Teams);
+
+        DisplayTeams(Teams);
+
+        
+    } catch(error){
+        console.error("Could not initialize dashboard: ", error);
+        TeamList.textContent = "Unable to load your teams.";
+        document.getElementById("teams-empty").hidden = true;
+    }
+
+}
