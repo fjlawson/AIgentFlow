@@ -37,8 +37,9 @@ TOOLS = [
     tool(
         "place_order",
         "Place a limit order to buy an outcome. The limit price is the price of the outcome being bought "
-        "(0.01 to 0.99). The total cost (quantity times price) can't go over $10. You get only one trade per "
-        "run. Only trade when the research clearly supports it, doing nothing is fine.",
+        "(0.01 to 0.99). The total cost (quantity times price) can't go over $10. You can only hold one "
+        "position per market, so close it first to buy it again. You get only one trade per run. Only trade "
+        "when the research clearly supports it, doing nothing is fine.",
         {
             "slug": SLUG,
             "outcome": {"type": "string", "enum": ["yes", "no"]},
