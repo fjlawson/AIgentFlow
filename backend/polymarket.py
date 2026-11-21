@@ -270,6 +270,13 @@ def place_order(user_id, slug, outcome, quantity, limit_price, team_id=None, exp
     if round(quantity * price, 6) > MAX_TRADE_DOLLARS:
         raise HTTPException(status_code=400, detail=f"One order can't cost more than ${MAX_TRADE_DOLLARS}")
 
+    # agents would otherwise keep adding to the same market every run
+    if has_stake(user_id, slug):
+        raise HTTPException(
+            status_code=400,
+            detail="You already have a position or open order in this market. Close it before buying more."
+        )
+
     mode = get_mode()
     row = {
         "user_id": user_id,
@@ -420,6 +427,27 @@ def live_positions(creds):
         cursor = data.get("nextCursor")
         if data.get("eof") or not cursor:
             return found
+
+
+def has_stake(user_id, slug):
+    mode = get_mode()
+    open_orders = (
+        get_admin_client().table("polymarket_orders")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("market_slug", slug)
+        .eq("mode", mode)
+        .in_("status", ["open", "partial"])
+        .execute()
+    ).data
+    if open_orders:
+        return True
+
+    if mode == "live":
+        position = live_positions(find_credentials(user_id)).get(slug)
+        return bool(position) and float(position["netPositionDecimal"]) != 0
+    positions, _ = paper_positions(user_id)
+    return any(position_slug == slug and quantity > 0 for (position_slug, _), quantity in positions.items())
 
 
 def get_portfolio(user_id):
