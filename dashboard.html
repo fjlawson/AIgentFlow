@@ -43,21 +43,43 @@
         <main class="container">
             <h1 class="page-title">Dashboard</h1>
         
-            <!-- stats containing the portfolio's value and a graphical representation -->
-            <section class="stats" aria-label="Summary">
-                <div class="card stat">
-                    <span class="stat__label">Portfolio Value</span>
-                    <span class="stat__value" data-stat="portfolioValue">--</span>
-                </div>
+            <!-- Portfolio summary and historical graph -->
+<section class="stats" aria-label="Portfolio Summary">
 
-                <!-- portfolio line graph -->
-                <div class="chart" id="chart-wrap" hidden>
-                    <canvas id="portfolio-chart" role="img" aria-label="Portfolio value over time">
-                    
-                    </canvas>
-                    <p class="empty" id="chart-empty">No portfolio history yet.</p>
-                </div>
-            </section>
+    <div class="card portfolio-card">
+
+        <div class="portfolio-card__header">
+            <div>
+                <h2 class="portfolio-card__title">
+                    Portfolio Value
+                </h2>
+
+                <span class="portfolio-card__mode">
+                    Paper Trading
+                </span>
+            </div>
+
+            <span class="portfolio-card__value"
+                  id="portfolio-value">—</span>
+        </div>
+
+        <div class="chart" id="chart-wrap" hidden>
+
+            <canvas id="portfolio-chart"
+                    role="img"
+                    aria-label="Portfolio value over time"
+                    hidden>
+            </canvas>
+
+            <p class="empty" id="chart-empty" hidden>
+                No paper portfolio history yet.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
         
             <div class="dashboard-grid">
         
@@ -89,7 +111,7 @@
                         <h2 class="card__title" id="activity-heading">Recent Activity</h2>
                         <table class="table">
                             <thead>
-                            <tr><th>Market</th><th>Side</th><th>Size</th><th>Result</th></tr>
+                            <tr><th>Market</th><th>Outcome</th><th>Quantity</th><th>Status</th><th>Placed At</th></tr>
                             </thead>
                             <tbody id="activity-body"></tbody>
                         </table>
@@ -233,6 +255,36 @@
                     
                 </div>
             </div>
+        </dialog>
+
+        <!--Displays information about a purchased team-->
+        <dialog class="modal" id="team-details-dialog">
+
+                <div class="modal__content">
+                    <h2 class="modal__header" id="details-team-name">
+                        Team Details
+                    </h2>
+
+                    <p>
+                        <strong>Status: </strong>
+                        <span id= "details-team-status"></span>
+                    </p>
+
+                    <p>
+                        <strong>Daily Trading Cap: </strong>
+                        <span id= "details-team-cap"></span>
+                    </p>
+
+                    <p>
+                        <strong>Team ID: </strong>
+                        <span id= "details-team-id"></span>
+                    </p>
+
+                    <div class= "agents-modal__footer">
+                        <button type="button" class="btn"
+                            id="details-close"> Close </button>
+                    </div>
+                </div>
         </dialog>
         <script type="module" src="./assets/scripts/main.js"></script>
         <script type="module" src="./assets/scripts/dashboard.js"></script>

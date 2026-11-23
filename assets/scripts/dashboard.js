@@ -22,14 +22,29 @@ const AgentModel = document.getElementById("agent-model"); //find agent selectio
 const FeedDialog = document.getElementById("feed-dialog"); //find the expanded feed dialog
 const FeedCloseButton = document.getElementById("feed-close"); //find close button in live feed window
 const CancelButton = document.getElementById("agents-cancel"); //find cancel button in "agent configuration" modal
+const DetailsDialog = document.getElementById("team-details-dialog"); //find dialog window when clicking "view details"
+const DetailsTeamName = document.getElementById("details-team-name");
+const DetailsTeamStatus = document.getElementById("details-team-status");
+const DetailsTeamCap = document.getElementById("details-team-cap");
+const DetailsTeamID = document.getElementById("details-team-id");
+const DetailsCloseButton = document.getElementById("details-close");
+const PortfolioValue = document.getElementById("portfolio-value");
+const PortfolioChart = document.getElementById("portfolio-chart");
+const ChartWrap = document.getElementById("chart-wrap");
+const ChartEmpty = document.getElementById("chart-empty");
+const ActivityBody = document.getElementById("activity-body");
+const ActivityEmpty = document.getElementById("activity-empty");
+
 
 //launch local server in console -  python -m http.server 5500, vercel dev --listen 5500
 
 //######## Global variables #############
-let ConfiguringTeamID = null; //needed for "configure agents" team card, to help identify which agent is selected
-let CurrentTeams = [];        //Array for currently displayed teams
-let SelectedTeamID = 1;       //create selected Team ID for populate feed teams default value
-let CurrentAgents = [];       //empty array for Current agents
+let ConfiguringTeamID = null;   //needed for "configure agents" team card, to help identify which agent is selected
+let CurrentTeams = [];          //Array for currently displayed teams
+let SelectedTeamID = null;      //create selected Team ID for populate feed teams default value
+let CurrentActivity = [];       //activity messages retrieved from supabase
+let CurrentAgents = [];         //empty array for Current agents
+let Activity_Feed_Amount = 10;  //activity feed message amount
 
 
 //####### Functions ########
@@ -46,6 +61,98 @@ async function LoadOwnedTeams() {
         console.error("Unable to load owned Teams: ", error);
 
         return [];
+    }
+}
+
+//function to load recent activity
+async function LoadRecentActivity() {
+
+    // Clear any previously displayed orders
+    ActivityBody.replaceChildren();
+
+    ActivityEmpty.hidden = false;
+    ActivityEmpty.textContent = "Loading recent activity...";
+
+    try {
+
+        const Orders = await apiRequest(
+            "/activity/recent?mode=paper"
+        );
+
+        console.log("Recent activity:", Orders);
+
+        // Handle an account with no orders
+        if (Orders.length === 0) {
+
+            ActivityEmpty.hidden = false;
+            ActivityEmpty.textContent =
+                "No paper trades yet.";
+
+            return;
+        }
+
+        // Hide the empty message when orders exist
+        ActivityEmpty.hidden = true;
+
+        // Create one table row per order
+        Orders.forEach(function (Order) {
+
+            const Row = document.createElement("tr");
+
+            // Market identifier
+            const MarketCell = document.createElement("td");
+            MarketCell.textContent =
+                Order.market_slug || "Unknown Market";
+
+            // Selected outcome (YES/NO, etc.)
+            const SideCell = document.createElement("td");
+            SideCell.textContent =
+                Order.outcome || "—";
+
+            // Order quantity
+            const SizeCell = document.createElement("td");
+
+            const Quantity = Number(Order.quantity);
+
+            SizeCell.textContent =
+                Order.quantity != null &&
+                Number.isFinite(Quantity)
+                    ? Quantity.toLocaleString("en-US")
+                    : "—";
+
+            // Order status
+            const ResultCell = document.createElement("td");
+            const DateCell = document.createElement("td");
+            DateCell.textContent = Order.created_at
+            ? new Date(Order.created_at).toLocaleString() : "--";
+            ResultCell.textContent =
+                Order.status || "Unknown";
+
+            // Add cells to row
+            Row.append(
+                MarketCell,
+                SideCell,
+                SizeCell,
+                ResultCell,
+                DateCell
+            );
+
+            // Add row to Recent Activity table
+            ActivityBody.appendChild(Row);
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Unable to load recent activity:",
+            error
+        );
+
+        ActivityBody.replaceChildren();
+
+        ActivityEmpty.hidden = false;
+        ActivityEmpty.textContent =
+            "Unable to load recent activity.";
     }
 }
 
@@ -134,8 +241,6 @@ function CreateTeamCard(Team){
         //Update the status text
         StatusText.textContent = Team.active ? "Active" : "Inactive";
 
-        //Refresh dashboard stats
-        UpdateDashboardStats(CurrentTeams);
     });
 
     //Find the view live feed button inside our cloned team card
@@ -174,6 +279,39 @@ function CreateTeamCard(Team){
 
 }
 
+//function to Load activity feed
+async function LoadActivityFeed(){
+
+    try {
+
+        const Activity = await apiRequest("/activity/feed");
+
+        console.log("Live Feed Activity:", Activity);
+
+        // Store records returned by Supabase
+        CurrentActivity = Activity;
+
+        // Refresh the dashboard's Live Feed
+        PopulateDashboardFeed();
+
+        // If the expanded feed is open, refresh it too
+        if (FeedDialog.open) {
+            PopulateFeedTeams();
+            PopulateExpandedFeed();
+        }
+    } catch (error){
+        console.error("Unable to load Live Feed:", error);
+
+        FeedList.replaceChildren();
+        FeedEmpty.hidden = false;
+        FeedEmpty.textContent =
+            "Unable to load activity.";
+
+        FeedFooter.hidden = true;
+    }
+} 
+
+
 //function to load test agents
 async function TestLoadAgents(TeamID){
     try {
@@ -182,6 +320,19 @@ async function TestLoadAgents(TeamID){
     } catch (error){
         console.error("Unable to retrieve agents: ", error);
     }
+}
+
+//function to show details of each team
+function ShowTeamDetails(Team){
+    
+    //display the selected teams information
+    DetailsTeamName.textContent = Team.name;
+    DetailsTeamStatus.textContent = Team.is_enabled ? "Enabled" : "Disabled";
+    DetailsTeamCap.textContent = Team.daily_trade_cap + " / 50";
+    DetailsTeamID.textContent = Team.id;
+
+    //Open modal
+    DetailsDialog.showModal()
 }
 
 //function that Creates a tean card using the fields currently returned by /my-teams
@@ -375,7 +526,6 @@ function CreateOwnedTeamCard(Team){
     });
 
 
-
     //Details button
     const DetailsButton = document.createElement("button");
     DetailsButton.type = "button";
@@ -384,8 +534,13 @@ function CreateOwnedTeamCard(Team){
 
     DetailsButton.addEventListener("click", function (){
         //console.log("Selected Team: ", Team.name);
-        TestLoadAgents(Team.id);
+        //TestLoadAgents(Team.id);
+        ShowTeamDetails(Team);
     });
+
+    DetailsCloseButton.addEventListener("click", function(){
+        DetailsDialog.close();
+    })
 
     // initialize displayed cap and button states
     UpdateCapDisplay();
@@ -405,6 +560,206 @@ function CreateOwnedTeamCard(Team){
     Card.appendChild(ConfigureButton);
 
     return Card;
+}
+
+//function to load portolio history
+async function LoadPortfolioHistory() {
+    
+    //show the loading state
+    PortfolioValue.textContent = "Loading...";
+
+    try {
+        const History = await apiRequest("/portfolio/history?mode=paper");
+        console.log("Portfolio history: ", History);
+
+        //no historical data yet
+        if (History.length === 0){
+            PortfolioValue.textContent = "- No Data";
+            ChartWrap.hidden = false;
+            PortfolioChart.hidden = true;
+            ChartEmpty.hidden = false;
+
+            ChartEmpty.textContent = "No paper portfolio history yet.";
+
+            return;
+        }
+
+        //most recent snapshot
+        const Latest = History[History.length - 1];
+
+        //convert supabase numeric values to JS numbers
+        const Total = Number(Latest.total);
+
+        if (!Number.isFinite(Total)){
+            throw new Error("Invalid portfolio value.");
+        }
+
+        //Display the curent porfolio value
+        PortfolioValue.textContent = Total.toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD"
+        });
+
+        //make the chart visible
+        ChartWrap.hidden = false;
+        ChartEmpty.hidden = true;
+        PortfolioChart.hidden = false;
+        DrawPortfolioChart(History);
+
+    }catch (error){
+        console.error("Unable to retrieve portfolio history: ", error);
+
+
+        PortfolioValue.textContent = "—";
+
+        ChartWrap.hidden = false;
+        PortfolioChart.hidden = true;
+        ChartEmpty.hidden = false;
+
+        ChartEmpty.textContent = "Unable to load portfolio history.";
+    }
+}
+
+//draw portfolio graph function to canvas
+function DrawPortfolioChart(History) {
+
+    const Canvas = PortfolioChart;
+    const Context = Canvas.getContext("2d");
+
+    // Convert database values into chart points
+    const Points = History.map(function (Snapshot) {
+        return {
+            time: new Date(Snapshot.taken_at),
+            value: Number(Snapshot.total)
+        };
+    }).filter(function (Point) {
+        return Number.isFinite(Point.value) &&
+               !Number.isNaN(Point.time.getTime());
+    });
+
+    if (Points.length === 0) {
+        throw new Error("No valid portfolio points");
+    }
+
+    // Set canvas size for sharp rendering
+    const Width = Canvas.clientWidth || 600;
+    const Height = 260;
+    const Scale = window.devicePixelRatio || 1;
+
+    Canvas.width = Width * Scale;
+    Canvas.height = Height * Scale;
+
+    Context.setTransform(Scale, 0, 0, Scale, 0, 0);
+    Context.clearRect(0, 0, Width, Height);
+
+    // Chart padding
+    const Left = 55;
+    const Right = 20;
+    const Top = 25;
+    const Bottom = 35;
+
+    const GraphWidth = Width - Left - Right;
+    const GraphHeight = Height - Top - Bottom;
+
+    // Determine portfolio value range
+    const Values = Points.map(Point => Point.value);
+
+    let Min = Math.min(...Values);
+    let Max = Math.max(...Values);
+
+    // Prevent division by zero for constant values
+    if (Min === Max) {
+        Min -= 1;
+        Max += 1;
+    }
+
+    const X = function (Index) {
+        return Left +
+            (Points.length === 1
+                ? GraphWidth / 2
+                : Index / (Points.length - 1) * GraphWidth);
+    };
+
+    const Y = function (Value) {
+        return Top +
+            GraphHeight -
+            ((Value - Min) / (Max - Min)) * GraphHeight;
+    };
+
+    // Draw horizontal grid lines and dollar labels
+    Context.font = "12px Arial";
+    Context.fillStyle = "#666";
+    Context.strokeStyle = "#ddd";
+    Context.lineWidth = 1;
+
+    for (let i = 0; i <= 4; i++) {
+
+        const Value = Min + (Max - Min) * (i / 4);
+        const PositionY = Y(Value);
+
+        Context.beginPath();
+        Context.moveTo(Left, PositionY);
+        Context.lineTo(Width - Right, PositionY);
+        Context.stroke();
+
+        Context.fillText(
+            "$" + Value.toFixed(2),
+            2,
+            PositionY + 4
+        );
+    }
+
+    // Draw portfolio value line
+    Context.beginPath();
+
+    Points.forEach(function (Point, Index) {
+
+        const PositionX = X(Index);
+        const PositionY = Y(Point.value);
+
+        if (Index === 0) {
+            Context.moveTo(PositionX, PositionY);
+        } else {
+            Context.lineTo(PositionX, PositionY);
+        }
+    });
+
+    Context.strokeStyle = "#005633";
+    Context.lineWidth = 2.5;
+    Context.stroke();
+
+    // Draw the latest portfolio point
+    const LastIndex = Points.length - 1;
+
+    Context.beginPath();
+    Context.arc(
+        X(LastIndex),
+        Y(Points[LastIndex].value),
+        4,
+        0,
+        Math.PI * 2
+    );
+
+    Context.fillStyle = "#005633";
+    Context.fill();
+
+    // Label the first and last dates
+    Context.fillStyle = "#666";
+    Context.textAlign = "left";
+
+    Context.fillText(
+        Points[0].time.toLocaleDateString(),
+        Left,
+        Height - 10
+    );
+
+    Context.textAlign = "right";
+
+    Context.fillText(
+        Points[LastIndex].time.toLocaleDateString(),
+        Width - Right,
+        Height - 10
+    );
 }
 
 
@@ -506,8 +861,6 @@ function DisplayTeams(Teams){
 
     EmptyMessage.hidden = Teams.length > 0;
 
-    //Update dashboard summary statistics
-    UpdateDashboardStats(CurrentTeams);
 }
 
 //Function to load the actual team records
@@ -619,45 +972,6 @@ function PopulateModelDropdown(){
 }
 
 
-
-//function to update dashboard stats on top of screen (portfolio value, todays value, Teams Owned, Trades today)
-function UpdateDashboardStats(Teams) {
-    //create web elements
-    const OwnedElement = document.querySelector('[data-stat="teamsOwned"]');
-    const ActiveElement = document.querySelector('[data-stat="teamsActive"]');
-    const TradesElement =  document.querySelector('[data-stat="tradesToday"]');
-    
-    //Total number of teams
-    const TeamsOwned = Teams.length;
-
-    //count active teams
-    const TeamsActive = Teams.filter(function (Team){
-        return Team.active === true;
-    }).length;
-
-    //Add together the number of trades from every team
-    const TradesToday = Teams.reduce(function(Total, Team){
-        return Total + Team.tradesToday;
-    }, 0); //Total = 0, add each teams.tradesToday to the total
-
-    //Update HTML quantities if they exist
-    if (OwnedElement){
-        OwnedElement.textContent = TeamsOwned;
-    }
-
-    if (ActiveElement){
-        ActiveElement.textContent = TeamsActive;
-    }
-
-    if (TradesElement){
-        TradesElement.textContent = TradesToday;
-    }
-    
-    
-   
-}
-
-
 //close button function in live feed window
 FeedCloseButton.addEventListener("click", function() {
     FeedDialog.close();
@@ -671,26 +985,50 @@ AgentSelect.addEventListener("change", function() {
 //populate dashboard feed
 function PopulateDashboardFeed(){
 
-    //clear any existing messages
+    // Clear previously displayed activity
     FeedList.replaceChildren();
 
-    //loop through our test messages
-    TestMessages.forEach(function (Message){
+    // Display empty state when there are no messages
+    if (CurrentActivity.length === 0) {
+        FeedEmpty.hidden = false;
+        FeedEmpty.textContent = "No activity to be shown.";
+        FeedFooter.hidden = true;
+        return;
+    }
 
-        //clone the dashboard feed template
+    // Show the latest five messages on the dashboard -- Change to increase activity feed message amount
+    const RecentMessages = CurrentActivity.slice(0, Activity_Feed_Amount);
+
+    RecentMessages.forEach(function (Message) {
+
+        // Clone the existing HTML template
         const FeedItem = FeedItemTemplate.content.cloneNode(true);
 
-        //populate its fields
-        FeedItem.querySelector('[data-field="time"]').textContent = Message.time;
-        FeedItem.querySelector('[data-field="summary"]').textContent = Message.summary;
+        // Convert timestamp into local time
+        const Time = new Date(Message.created_at);
 
-        //add the completed message to the dashboard
+        const TimeText = Number.isNaN(Time.getTime())
+            ? "—" : Time.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+
+        // Populate the template
+        FeedItem.querySelector(
+            '[data-field="time"]'
+        ).textContent = TimeText;
+
+        FeedItem.querySelector(
+            '[data-field="summary"]'
+        ).textContent = `${Message.team_name}: ${Message.message}`;
+
+        // Append message to dashboard
         FeedList.appendChild(FeedItem);
     });
 
-    //show or hide empty message and expand button
-    FeedEmpty.hidden = TestMessages.length > 0;       //if we have atleast 1 message, hide "No activity to be shown." message
-    FeedFooter.hidden = TestMessages.length === 0;   //if there are messages, show the expand button
+    // Show activity and the Expand button
+    FeedEmpty.hidden = true;
+    FeedFooter.hidden = false;
 }
 
 
@@ -700,27 +1038,51 @@ function PopulateExpandedFeed(){
     //remove previously displayed messages
     FeedMessages.replaceChildren();
 
-    //Get messages belonging to the selected team
-    const TeamMessages = TestMessages.filter(function (Message){
-        return Message.teamId === SelectedTeamID;
-    });
 
-    //Display the filtered messages
-    TeamMessages.forEach(function (Message){
-        
-        const FeedMessage = FeedMessageTemplate.content.cloneNode(true);
+    // Retrieve messages for the selected purchased team
+    const TeamMessages = CurrentActivity.filter(
+        function (Message) {
+            return String(Message.user_team_id) ===
+                   String(SelectedTeamID);
+        }
+    );
 
-        FeedMessage.querySelector('[data-field="time"]').textContent = Message.time;
-        FeedMessage.querySelector('[data-field="text"]').textContent = Message.text;
+    // Handle teams with no activity
+    if (TeamMessages.length === 0) {
+
+        const EmptyMessage = document.createElement("p");
+        EmptyMessage.className = "feed-modal__empty";
+        EmptyMessage.textContent =
+            "No messages for this team yet.";
+
+        FeedMessages.appendChild(EmptyMessage);
+        return;
+    }
+
+    TeamMessages.forEach(function (Message) {
+
+        const FeedMessage =
+            FeedMessageTemplate.content.cloneNode(true);
+
+        const Time = new Date(Message.created_at);
+
+        const TimeText = Number.isNaN(Time.getTime())
+            ? "—"
+            : Time.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+
+        FeedMessage.querySelector(
+            '[data-field="time"]'
+        ).textContent = TimeText;
+
+        FeedMessage.querySelector(
+            '[data-field="text"]'
+        ).textContent = Message.message;
 
         FeedMessages.appendChild(FeedMessage);
     });
-
-    if (TeamMessages.length === 0){
-        const EmptyMessage = document.createElement("p");
-        EmptyMessage.textContent = "No Messages for this team.";
-        FeedMessages.appendChild(EmptyMessage);
-    }
     
 }
 
@@ -730,32 +1092,28 @@ function PopulateFeedTeams(){
     
     FeedTeams.replaceChildren();
 
-    TestTeams.forEach(function (Team){
+    // Use real purchased teams from Supabase
+    CurrentTeams.forEach(function (Team) {
 
-        //create ann HTML list item
         const ListItem = document.createElement("li");
-
-        //Create a button inside that list item
         const TeamButton = document.createElement("button");
-
-        //Determine wether this team is currently selected
-        const IsSelected = Number(Team.id) === Number(SelectedTeamID);
 
         TeamButton.type = "button";
         TeamButton.textContent = Team.name;
 
-        //Mark selected Team
+        // Compare UUID strings
+        const IsSelected =
+            String(Team.id) === String(SelectedTeamID);
+
         TeamButton.setAttribute(
             "aria-current",
             IsSelected ? "true" : "false"
         );
 
-        
+        // Change selected team
+        TeamButton.addEventListener("click", function () {
 
-        //when clicked, switch to this teams messages
-        TeamButton.addEventListener("click", function() {
-
-            SelectedTeamID = Number(Team.id);
+            SelectedTeamID = String(Team.id);
 
             PopulateFeedTeams();
             PopulateExpandedFeed();
@@ -763,7 +1121,6 @@ function PopulateFeedTeams(){
 
         ListItem.appendChild(TeamButton);
         FeedTeams.appendChild(ListItem);
-
     });
 
     
@@ -772,8 +1129,12 @@ function PopulateFeedTeams(){
 //expand button event listener for clicking
 ExpandButton.addEventListener("click", function (){
 
+    if (CurrentTeams.length === 0){
+        return;
+    }
+    
     //default to the first team
-    SelectedTeamID = TestTeams[0].id;
+    SelectedTeamID = String(CurrentTeams[0].id);
 
     PopulateFeedTeams();
     PopulateExpandedFeed();
@@ -970,6 +1331,7 @@ const TestTeams = [
 authReady.then(function(user){
     if (user){
         InitializeDashboard()
+        
     }
 });
 
@@ -977,7 +1339,7 @@ async function InitializeDashboard() {
     
     try {
         const Teams = await apiRequest("/my-teams");
-        console.log("Owned Teams: ", Teams);
+        //console.log("Owned Teams: ", Teams);
 
         DisplayTeams(Teams);
 
@@ -987,5 +1349,9 @@ async function InitializeDashboard() {
         TeamList.textContent = "Unable to load your teams.";
         document.getElementById("teams-empty").hidden = true;
     }
+
+    await LoadPortfolioHistory();
+    await LoadRecentActivity();
+    await LoadActivityFeed();
 
 }

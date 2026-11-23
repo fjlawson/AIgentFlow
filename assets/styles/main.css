@@ -226,11 +226,83 @@ a:focus-visible, button:focus-visible, .input:focus-visible {
 
 /* ** dashboard components ** */
 
-/* stat summary components */
-.page-dashboard .stats {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem; margin-bottom: 2.5rem;
+
+/*Main porfolio card */
+.page-dashboard .porfolio-card {
+  width: 100%;
+  padding: 1.5rem;
 }
+
+/* Portfolio header */
+.page-dashboard .portfolio-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.page-dashboard .portfolio-card__title {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 500;
+}
+
+.page-dashboard .portfolio-card__mode {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 1.1rem;
+    color: var(--text-muted-dark);
+}
+
+/* Current portfolio value */
+.page-dashboard .portfolio-card__value {
+    font-size: 2.5rem;
+    font-weight: 600;
+}
+
+/* Graph container */
+.page-dashboard .chart {
+    position: relative;
+    width: 100%;
+    height: auto;
+    margin-top: 1.5rem;
+}
+
+/* Portfolio graph */
+.page-dashboard #portfolio-chart {
+    display: block;
+    width: 100%;
+    height: 260px;
+}
+
+/* Hide canvas when no data exists */
+.page-dashboard #portfolio-chart[hidden],
+.page-dashboard .chart[hidden],
+.page-dashboard #chart-empty[hidden] {
+    display: none;
+}
+
+/* Empty-state message */
+.page-dashboard #chart-empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    font-size: 1.25rem;
+    color: var(--text-muted-dark);
+}
+
+/* Smaller screens */
+@media (max-width: 700px) {
+    .page-dashboard .portfolio-card__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .page-dashboard .portfolio-card__value {
+        font-size: 2rem;
+    }
+}
+
 
 .page-dashboard .stat { display: flex; flex-direction: column; padding: .5rem 1rem; }
 .page-dashboard .stat__label { font-size: 1.25rem; }
@@ -541,4 +613,38 @@ fieldset.form-group {
 
 .user-menu__item:hover {
   background: #f0f0f0;
+}
+
+
+/* Portfolio layout overrides */
+.page-dashboard .stats {
+    display: block;
+    width: 100%;
+    margin-bottom: 2.5rem;
+}
+
+.page-dashboard .stats .portfolio-card {
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    height: auto;
+}
+
+.page-dashboard .portfolio-card .chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+}
+
+.page-dashboard .portfolio-card .chart[hidden] {
+    display: none;
+}
+
+.page-dashboard .portfolio-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
 }

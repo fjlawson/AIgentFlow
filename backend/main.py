@@ -698,6 +698,207 @@ def update_agent_model(
     }
 
 
+
+@app.get("/portfolio/history")
+def get_portfolio_history(
+    mode: str = "paper",
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    # Validate portfolio mode
+    if mode not in ("paper", "live"):
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid portfolio mode"
+        )
+
+    # Authenticate the user
+    client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+
+    try:
+        user = client.auth.get_user(
+            credentials.credentials
+        ).user
+
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    # Backend-only Supabase client
+    db = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    # Retrieve the user's latest 100 snapshots
+    result = (
+        db.table("portfolio_snapshots")
+        .select("cash, positions_value, total, taken_at")
+        .eq("user_id", user.id)
+        .eq("mode", mode)
+        .order("taken_at", desc=True)
+        .limit(100)
+        .execute()
+    )
+
+    # Reverse so the oldest snapshot appears first
+    return list(reversed(result.data or []))
+
+
+# Retrieve the authenticated user's recent trading orders
+@app.get("/activity/recent")
+def get_recent_activity(
+    mode: str = "paper",
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    # Validate requested trading mode
+    if mode not in ("paper", "live"):
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid trading mode"
+        )
+
+    # Authenticate user
+    client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+
+    try:
+        user = client.auth.get_user(
+            credentials.credentials
+        ).user
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    # Backend-only Supabase client
+    db = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    # Retrieve only the current user's recent orders
+    result = (
+        db.table("polymarket_orders")
+        .select(
+            "id, market_slug, outcome, quantity, "
+            "filled_quantity, status, created_at"
+        )
+        .eq("user_id", user.id)
+        .eq("mode", mode)
+        .order("created_at", desc=True)
+        .limit(10)
+        .execute()
+    )
+
+    return result.data or []
+
+
+@app.get("/activity/feed")
+def get_activity_feed(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    # Authenticate the current user
+    auth_client = create_client(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    )
+
+    try:
+        user = auth_client.auth.get_user(
+            credentials.credentials
+        ).user
+    except AuthApiError:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in again"
+        )
+
+    db = create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY
+    )
+
+    # Retrieve purchased teams belonging to this user
+    owned = (
+        db.table("user_teams")
+        .select("id, team_name")
+        .eq("user_id", user.id)
+        .eq("owned", True)
+        .execute()
+    )
+
+    teams = owned.data or []
+
+    if not teams:
+        return []
+
+    team_ids = [team["id"] for team in teams]
+
+    # Retrieve activity for those purchased teams only
+    activity = (
+        db.table("agent_activity")
+        .select(
+            "id, user_team_id, team_agent_id, "
+            "event_type, message, created_at"
+        )
+        .in_("user_team_id", team_ids)
+        .order("created_at", desc=True)
+        .limit(50)
+        .execute()
+    )
+
+    # Map team IDs to human-readable names
+    team_names = {
+        team["id"]: team["team_name"]
+        for team in teams
+    }
+
+    result = []
+
+    for event in activity.data or []:
+        result.append({
+            "id": event["id"],
+            "user_team_id": event["user_team_id"],
+            "team_name": team_names.get(
+                event["user_team_id"],
+                "Unknown Team"
+            ),
+            "team_agent_id": event["team_agent_id"],
+            "event_type": event["event_type"],
+            "message": event["message"],
+            "created_at": event["created_at"]
+        })
+
+    return result
+
+
+
 @app.post("/checkout")
 def checkout(
     details: CheckoutRequest,
