@@ -156,128 +156,6 @@ async function LoadRecentActivity() {
     }
 }
 
-//function to create team card
-function CreateTeamCard(Team){
-    
-    //clone the HTML template
-    const TeamCard = TeamTemplate.content.cloneNode(true);
-    //find the daily cap adjustment buttons
-    const DecrementButton = TeamCard.querySelector('[data-action="decrement-cap"]');
-    const IncrementButton = TeamCard.querySelector('[data-action="increment-cap"]');
-    //store references to userCap elements
-    const CapElements = TeamCard.querySelectorAll('[data-field="userCap"]');
-
-
-    //Populate the template with the teams information
-    //team name
-    TeamCard.querySelector('[data-field="team_name"]').textContent =
-        Team.name;
-
-    //number of agents
-    TeamCard.querySelector('[data-field="numAgents"]').textContent =
-        Team.numAgents;
-
-    //last run
-    TeamCard.querySelector('[data-field="lastRun"]').textContent =
-        Team.lastRun;
-
-    //Trades today
-    TeamCard.querySelector('[data-field="tradesToday"]').textContent =
-        Team.tradesToday;
-
-    //User Cap
-    TeamCard.querySelectorAll('[data-field="userCap"]').forEach(element => {
-        element.textContent = Team.userCap;
-        });
-    
-
-    //Maxiumum Cap
-    TeamCard.querySelector('[data-field="maxCap"]').textContent =
-        Team.maxCap;
-
-    //Update the daily cap displayed on this team card
-    function UpdateCapDisplay() {
-        //update every usercap field in the team card
-        CapElements.forEach(
-            function (Element) {
-                Element.textContent = Team.userCap;
-            }
-        );
-
-        //Disable buttons when limits are reached
-        DecrementButton.disabled = Team.userCap <= 0;
-        IncrementButton.disabled = Team.userCap >= Team.maxCap;
-    }
-
-    DecrementButton.addEventListener("click", function(){
-        
-        if (Team.userCap > 0) {
-            Team.userCap--;
-        }
-
-        UpdateCapDisplay();
-    });
-
-    IncrementButton.addEventListener("click", function (){
-
-        if (Team.userCap < Team.maxCap){
-            Team.userCap++;
-        }
-
-        UpdateCapDisplay();
-    });
-
-    //locate toggle checkbox on the cloned team card
-    const Toggle = TeamCard.querySelector('input[type="checkbox"]');
-
-    //find the status text next to toggle button
-    const StatusText = TeamCard.querySelector('[data-field="active_status"]');
-
-    //listen for changes to the checkbox (active/inactive)
-    Toggle.addEventListener("change", function () {
-        //update the actual team object
-        Team.active = Toggle.checked;
-
-        //Update the status text
-        StatusText.textContent = Team.active ? "Active" : "Inactive";
-
-    });
-
-    //Find the view live feed button inside our cloned team card
-    const ViewFeedButton = TeamCard.querySelector('[data-action="view-feed"]');
-
-    //open the live feed dialog when clicked
-    ViewFeedButton.addEventListener("click", function () {
-    console.log("view live feed clicked.")
-    SelectedTeamID = Team.id;
-    PopulateFeedTeams();
-    PopulateExpandedFeed();
-    FeedDialog.showModal();
-    });
-
-    //find and configure agents button in the team card "configure Agents"
-    const ConfigureButton = TeamCard.querySelector('[data-action="configure-agents"]');
-
-    //listen for clicks on the configure agents button
-    ConfigureButton.addEventListener("click", function () {
-
-        ConfiguringTeamID = Team.id;
-
-        console.log("Configuring Team: ", ConfiguringTeamID); // for debug purposes
-
-        PopulateAgentDropDown();
-        PopulateModelDropdown();
-        DisplaySelectedAgent();
-
-        AgentsDialog.showModal();
-
-    });
-
-    UpdateCapDisplay();
-
-    return TeamCard;
-
-}
 
 //function to Load activity feed
 async function LoadActivityFeed(){
@@ -312,15 +190,6 @@ async function LoadActivityFeed(){
 } 
 
 
-//function to load test agents
-async function TestLoadAgents(TeamID){
-    try {
-        const Agents = await apiRequest (`/my-teams/${TeamID}/agents`);
-        //console.log("Agents returned from Supabase: ", Agents);
-    } catch (error){
-        console.error("Unable to retrieve agents: ", error);
-    }
-}
 
 //function to show details of each team
 function ShowTeamDetails(Team){
@@ -1155,6 +1024,7 @@ SaveButton.addEventListener("click", async function() {
 
     // Get the selected AI model
     const SelectedModel = AgentModel.value;
+    //console.log("Selected model being sent: ", SelectedModel);
 
     // Ensure we have the required information
     if (!ConfiguringTeamID || !SelectedAgentID || !SelectedModel) {
@@ -1303,7 +1173,7 @@ const TestAgents = [
 
 //Temporary Models for Frontend testing
 const TestModels = [
-    {id: "openAI/gpt-4o", name: "GPT-4o"},
+    {id: "openai/gpt-4o", name: "GPT-4o"},
     {id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4"},
     {id: "google/gemini-2.5-pro", name: "Gemini 2.5 Pro"}
 ];
