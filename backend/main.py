@@ -16,11 +16,13 @@ from openrouter import router as openrouter_router
 from polymarket import router as polymarket_router
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+from agents import router as agents_router #from agents.py
 
 app = FastAPI(title="AIgentFlow API")
 app.include_router(admin_router)
 app.include_router(openrouter_router)
 app.include_router(polymarket_router)
+app.include_router(agents_router)
 security = HTTPBearer()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -35,7 +37,7 @@ MOCK_TEAMS = {
 
 #allowed agent models, can change when verified what AI models we are using
 ALLOWED_AGENT_MODELS = {
-    "openAI/gpt-4o",
+    "openai/gpt-4o",
     "anthropic/claude-sonnet-4",
     "google/gemini-2.5-pro"
 }
@@ -403,7 +405,7 @@ def update_team_cap(
     )
     
     if not result.data:
-        raise HHTPException(
+        raise HTTPException(
             status_code=404,
             detail="Owned team not found."
         )
